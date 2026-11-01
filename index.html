@@ -275,6 +275,19 @@
 
         <!-- ANALYTICS CHARTS TAB -->
         <section id="tab-charts" class="tab-content hidden space-y-6">
+            <!-- Date Filter & Period Bar -->
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-calendar-days text-brand-600 dark:text-brand-400"></i>
+                    <span class="font-bold text-sm text-slate-800 dark:text-slate-200">Analytics Period:</span>
+                </div>
+                <div class="flex items-center space-x-2 w-full sm:w-auto">
+                    <button onclick="setChartTimeframe('today')" id="tf-today" class="chart-tf-btn flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-brand-600 text-white shadow-sm transition-all">Today</button>
+                    <button onclick="setChartTimeframe('weekly')" id="tf-weekly" class="chart-tf-btn flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-all">This Week</button>
+                    <button onclick="setChartTimeframe('monthly')" id="tf-monthly" class="chart-tf-btn flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-all">This Month</button>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Category Breakdown Bar Chart -->
                 <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm flex flex-col justify-between">
@@ -282,7 +295,7 @@
                         <div class="flex items-center justify-between mb-2">
                             <div>
                                 <h3 class="font-bold text-base md:text-lg text-slate-900 dark:text-white" data-i18n="chart_category_title">Calories by Category</h3>
-                                <p class="text-[11px] text-slate-400">Calories consumed per food category with unique color themes</p>
+                                <p class="text-[11px] text-slate-400">Calories consumed per food category with % breakdown</p>
                             </div>
                             <div class="w-8 h-8 rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center">
                                 <i class="fa-solid fa-chart-bar text-xs"></i>
@@ -778,113 +791,22 @@
         let selectedImageBase64 = null;
         let mediaStream = null;
         let currentFacingMode = 'environment';
+        let activeTimeframe = 'today';
         let categoryChartInstance = null;
         let macroChartInstance = null;
         let microChartInstance = null;
 
         // --- GEMINI API KEY INTEGRATION ---
-        const HARDCODED_API_KEY = "AQ.Ab8RN6KAYdFArplzlwZOHMGj8NpPgqqT3LKTLPYpsClInZsMog";
-        let GEMINI_API_KEY = localStorage.getItem('user_gemini_api_key') || HARDCODED_API_KEY;
-        
-        // Auto initialize the provided key into browser storage
-        if (!localStorage.getItem('user_gemini_api_key')) {
-            localStorage.setItem('user_gemini_api_key', HARDCODED_API_KEY);
-        }
-
+        let GEMINI_API_KEY = localStorage.getItem('user_gemini_api_key') || 'AQ.Ab8RN6KAYdFArplzlwZOHMGj8NpPgqqT3LKTLPYpsClInZsMog';
         function getActiveApiKey() {
-            return localStorage.getItem('user_gemini_api_key') || HARDCODED_API_KEY;
+            return localStorage.getItem('user_gemini_api_key') || GEMINI_API_KEY;
         }
 
-        function promptSetApiKey() {
-            const key = prompt("Enter your Gemini API Key:", getActiveApiKey());
-            if (key !== null) {
-                const trimmed = key.trim();
-                localStorage.setItem('user_gemini_api_key', trimmed || HARDCODED_API_KEY);
-                GEMINI_API_KEY = trimmed || HARDCODED_API_KEY;
-                alert("API Key updated successfully!");
-            }
-        }
-
-        // Initialize App safely on window load
-        window.onload = function() {
-            document.getElementById('todayDate').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
-            setupEventListeners();
-            renderFoodGrid(bdFoodDatabase);
-            updateDashboardUI();
-        };
-
-        function setupEventListeners() {
-            // Mobile menu toggle
-            document.getElementById('menuToggle').addEventListener('click', () => {
-                document.getElementById('sidebar').classList.toggle('-translate-x-full');
-            });
-
-            // Nav Tabs
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const tab = btn.getAttribute('data-tab');
-                    switchTab(tab);
-                    // Close mobile sidebar if open
-                    document.getElementById('sidebar').classList.add('-translate-x-full');
-                });
-            });
-
-            // Theme toggle
-            document.getElementById('themeToggle').addEventListener('click', () => {
-                document.documentElement.classList.toggle('dark');
-            });
-
-            // Language toggles
-            document.getElementById('langToggle').addEventListener('click', toggleLanguage);
-            document.getElementById('langToggleMobile').addEventListener('click', toggleLanguage);
-
-            // Food search input
-            document.getElementById('foodSearchInput').addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase().trim();
-                const filtered = bdFoodDatabase.filter(item => 
-                    item.nameEn.toLowerCase().includes(query) || 
-                    item.nameBn.includes(query) || 
-                    item.category.toLowerCase().includes(query)
-                );
-                renderFoodGrid(filtered);
-            });
-
-            // Portion Modal
-            document.getElementById('modalPortionQty').addEventListener('input', updateModalCalculations);
-            document.getElementById('confirmLogBtn').addEventListener('click', confirmAddMealFromModal);
-
-            // Photo Input Handlers
-            document.getElementById('modePhotoBtn').addEventListener('click', () => switchAiMode('photo'));
-            document.getElementById('modeTextBtn').addEventListener('click', () => switchAiMode('text'));
-            document.getElementById('triggerUploadBtn').addEventListener('click', () => document.getElementById('imageFileInput').click());
-            document.getElementById('dropZone').addEventListener('click', (e) => {
-                if (e.target.id !== 'openCameraBtn' && !document.getElementById('openCameraBtn').contains(e.target)) {
-                    document.getElementById('imageFileInput').click();
-                }
-            });
-            document.getElementById('imageFileInput').addEventListener('change', handleFileSelect);
-
-            // Live Camera Modal
-            document.getElementById('openCameraBtn').addEventListener('click', openCamera);
-            document.getElementById('closeCameraBtn').addEventListener('click', stopCamera);
-            document.getElementById('switchCameraBtn').addEventListener('click', switchCamera);
-            document.getElementById('captureSnapshotBtn').addEventListener('click', takeSnapshot);
-
-            // Run AI & Log AI result
-            document.getElementById('runAiAnalysisBtn').addEventListener('click', analyzeWithGemini);
-            document.getElementById('addAiMealBtn').addEventListener('click', addAiMealToLog);
-
-            // AI Dietitian Chat
-            document.getElementById('sendDietitianMsg').addEventListener('click', sendDietitianMessage);
-            document.getElementById('dietitianInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') sendDietitianMessage();
-            });
-        }
-
-        // TAB NAVIGATION
+        // --- TAB NAVIGATION ---
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if (targetTab) targetTab.classList.remove('hidden');
 
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 if (btn.getAttribute('data-tab') === tabId) {
@@ -894,92 +816,72 @@
                 }
             });
 
+            // Update title
             const titleMap = {
                 dashboard: "Dashboard",
-                charts: "Nutrient Charts",
+                charts: "Nutrient Analytics & Reports",
                 tracker: "BD Food Database",
                 photo: "AI Food Vision Scanner",
-                meals: "Meal Log History",
-                dietitian: "AI Dietitian BD"
+                meals: "Daily Meal Logs",
+                dietitian: "AI Clinical Dietitian"
             };
             document.getElementById('pageTitle').innerText = titleMap[tabId] || "Dashboard";
 
             if (tabId === 'charts') {
                 renderCharts();
             }
+
+            // Close mobile menu
+            document.getElementById('sidebar').classList.add('-translate-x-full');
         }
 
-        // LANGUAGE TOGGLE
-        function toggleLanguage() {
-            currentLang = currentLang === 'en' ? 'bn' : 'en';
-            document.getElementById('langToggle').innerText = currentLang === 'en' ? 'বাংলা' : 'English';
-            document.getElementById('langToggleMobile').innerText = currentLang === 'en' ? 'BN / EN' : 'EN / BN';
+        // --- RENDER FOOD DATABASE ---
+        function renderFoodGrid(query = '') {
+            const grid = document.getElementById('foodGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
 
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (i18n[currentLang] && i18n[currentLang][key]) {
-                    el.innerText = i18n[currentLang][key];
-                }
+            const filtered = bdFoodDatabase.filter(item => 
+                item.nameEn.toLowerCase().includes(query.toLowerCase()) || 
+                item.nameBn.includes(query) ||
+                item.category.toLowerCase().includes(query.toLowerCase())
+            );
+
+            filtered.forEach(food => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/70 rounded-2xl p-4 flex flex-col justify-between hover:border-brand-500 transition-all";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300">${food.category}</span>
+                            <div class="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-brand-600 dark:text-brand-400">
+                                <i class="fa-solid ${food.icon}"></i>
+                            </div>
+                        </div>
+                        <h4 class="font-bold text-slate-900 dark:text-white text-base">${currentLang === 'bn' ? food.nameBn : food.nameEn}</h4>
+                        <div class="text-xs text-slate-400 mb-3">${food.unit}</div>
+                        <div class="grid grid-cols-4 gap-1 text-center py-2 bg-white dark:bg-slate-800 rounded-xl text-xs mb-3">
+                            <div><span class="block text-[10px] text-slate-400">Cal</span><span class="font-bold text-orange-500">${food.calories}</span></div>
+                            <div><span class="block text-[10px] text-slate-400">Prot</span><span class="font-bold text-indigo-500">${food.protein}g</span></div>
+                            <div><span class="block text-[10px] text-slate-400">Carb</span><span class="font-bold text-emerald-500">${food.carbs}g</span></div>
+                            <div><span class="block text-[10px] text-slate-400">Fat</span><span class="font-bold text-amber-500">${food.fat}g</span></div>
+                        </div>
+                    </div>
+                    <button onclick="openPortionModal(${food.id})" class="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold transition-all">
+                        + Add Meal
+                    </button>
+                `;
+                grid.appendChild(card);
             });
-
-            renderFoodGrid(bdFoodDatabase);
-            updateDashboardUI();
         }
 
-        // RENDER FOOD DATABASE GRID
-        function renderFoodGrid(foods) {
-            const container = document.getElementById('foodGrid');
-            container.innerHTML = foods.map(food => `
-                <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-brand-500/50 transition-all flex flex-col justify-between">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 rounded-xl bg-brand-100 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 flex items-center justify-center">
-                                <i class="fa-solid ${food.icon} text-lg"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-slate-900 dark:text-white text-base">${currentLang === 'bn' ? food.nameBn : food.nameEn}</h4>
-                                <span class="text-[11px] font-semibold text-slate-400">${food.category}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-4 gap-1 text-center py-2 bg-white dark:bg-slate-800 rounded-lg text-xs my-2 border border-slate-100 dark:border-slate-700/50">
-                        <div>
-                            <div class="text-[9px] text-slate-400 font-bold uppercase">Cal</div>
-                            <div class="font-bold text-orange-500">${food.calories}</div>
-                        </div>
-                        <div>
-                            <div class="text-[9px] text-slate-400 font-bold uppercase">Prot</div>
-                            <div class="font-bold text-indigo-500">${food.protein}g</div>
-                        </div>
-                        <div>
-                            <div class="text-[9px] text-slate-400 font-bold uppercase">Carb</div>
-                            <div class="font-bold text-emerald-500">${food.carbs}g</div>
-                        </div>
-                        <div>
-                            <div class="text-[9px] text-slate-400 font-bold uppercase">Fat</div>
-                            <div class="font-bold text-amber-500">${food.fat}g</div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
-                        <span class="text-[11px] text-slate-400 font-medium">${food.unit}</span>
-                        <button onclick="openPortionModal(${food.id})" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-semibold transition-all">
-                            + Add Meal
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // PORTION MODAL LOGIC
+        // --- PORTION MODAL ---
         function openPortionModal(foodId) {
             selectedFoodForModal = bdFoodDatabase.find(f => f.id === foodId);
             if (!selectedFoodForModal) return;
 
             document.getElementById('modalFoodTitle').innerText = currentLang === 'bn' ? selectedFoodForModal.nameBn : selectedFoodForModal.nameEn;
             document.getElementById('modalFoodCategory').innerText = selectedFoodForModal.category;
-            document.getElementById('modalUnitName').innerText = selectedFoodForModal.unit;
             document.getElementById('modalPortionQty').value = 1;
 
             updateModalCalculations();
@@ -988,7 +890,6 @@
 
         function closePortionModal() {
             document.getElementById('portionModal').classList.add('hidden');
-            selectedFoodForModal = null;
         }
 
         function updateModalCalculations() {
@@ -1000,12 +901,12 @@
             document.getElementById('modalFat').innerText = Math.round(selectedFoodForModal.fat * qty) + 'g';
         }
 
-        function confirmAddMealFromModal() {
+        function confirmAddMealLog() {
             if (!selectedFoodForModal) return;
             const qty = parseFloat(document.getElementById('modalPortionQty').value) || 1;
             const mealType = document.getElementById('modalMealType').value;
 
-            const mealEntry = {
+            const newMeal = {
                 id: Date.now(),
                 name: currentLang === 'bn' ? selectedFoodForModal.nameBn : selectedFoodForModal.nameEn,
                 category: selectedFoodForModal.category,
@@ -1022,92 +923,142 @@
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
 
-            mealsLog.unshift(mealEntry);
+            mealsLog.unshift(newMeal);
             localStorage.setItem('foodlens_bd_meals', JSON.stringify(mealsLog));
 
             closePortionModal();
             updateDashboardUI();
         }
 
-        // UPDATE DASHBOARD & STATS
+        // --- DASHBOARD UI UPDATES ---
         function updateDashboardUI() {
-            let totalCal = 0, totalProt = 0, totalCarb = 0, totalFat = 0;
-            mealsLog.forEach(m => {
+            const now = new Date();
+            const todaysMeals = mealsLog.filter(m => new Date(m.id || Date.now()).toDateString() === now.toDateString());
+
+            let totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
+            todaysMeals.forEach(m => {
                 totalCal += m.calories || 0;
-                totalProt += m.protein || 0;
-                totalCarb += m.carbs || 0;
-                totalFat += m.fat || 0;
+                totalP += m.protein || 0;
+                totalC += m.carbs || 0;
+                totalF += m.fat || 0;
             });
 
             document.getElementById('dash-cal').innerText = totalCal;
-            document.getElementById('dash-protein').innerText = totalProt;
-            document.getElementById('dash-carbs').innerText = totalCarb;
-            document.getElementById('dash-fat').innerText = totalFat;
+            document.getElementById('dash-protein').innerText = totalP;
+            document.getElementById('dash-carbs').innerText = totalC;
+            document.getElementById('dash-fat').innerText = totalF;
 
             document.getElementById('bar-cal').style.width = Math.min(100, (totalCal / dailyTargets.calories) * 100) + '%';
-            document.getElementById('bar-protein').style.width = Math.min(100, (totalProt / dailyTargets.protein) * 100) + '%';
-            document.getElementById('bar-carbs').style.width = Math.min(100, (totalCarb / dailyTargets.carbs) * 100) + '%';
-            document.getElementById('bar-fat').style.width = Math.min(100, (totalFat / dailyTargets.fat) * 100) + '%';
+            document.getElementById('bar-protein').style.width = Math.min(100, (totalP / dailyTargets.protein) * 100) + '%';
+            document.getElementById('bar-carbs').style.width = Math.min(100, (totalC / dailyTargets.carbs) * 100) + '%';
+            document.getElementById('bar-fat').style.width = Math.min(100, (totalF / dailyTargets.fat) * 100) + '%';
 
-            // Render Recent Meals List
+            // Render Recent List
             const recentContainer = document.getElementById('dashboardRecentMeals');
-            if (mealsLog.length === 0) {
-                recentContainer.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No meals logged today yet.</div>`;
-            } else {
-                recentContainer.innerHTML = mealsLog.slice(0, 5).map(m => `
-                    <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
-                        <div class="flex items-center space-x-3">
-                            <span class="px-2 py-1 bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300 text-[10px] font-bold rounded-md uppercase">${m.type}</span>
-                            <div>
-                                <div class="font-semibold text-sm text-slate-800 dark:text-slate-200">${m.name}</div>
-                                <div class="text-[11px] text-slate-400">${m.time}</div>
+            if (recentContainer) {
+                recentContainer.innerHTML = '';
+                if (todaysMeals.length === 0) {
+                    recentContainer.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">No meals logged today yet.</div>`;
+                } else {
+                    todaysMeals.slice(0, 5).forEach(meal => {
+                        recentContainer.innerHTML += `
+                            <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-8 h-8 rounded-lg bg-brand-100 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-xs">
+                                        <i class="fa-solid fa-utensils"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-bold text-sm text-slate-800 dark:text-slate-200">${meal.name}</div>
+                                        <div class="text-[10px] text-slate-400">${meal.type} • ${meal.time}</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-extrabold text-sm text-orange-500">${meal.calories} kcal</div>
+                                    <div class="text-[10px] text-slate-400">P:${meal.protein}g C:${meal.carbs}g F:${meal.fat}g</div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="font-bold text-sm text-orange-500">${m.calories} kcal</div>
-                            <div class="text-[10px] text-slate-400">P:${m.protein}g C:${m.carbs}g F:${m.fat}g</div>
-                        </div>
-                    </div>
-                `).join('');
+                        `;
+                    });
+                }
             }
 
-            // Update Meal Log Table in Meals Tab
-            const tableBody = document.getElementById('fullMealTableBody');
-            tableBody.innerHTML = mealsLog.map(m => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                    <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 uppercase">${m.type}</span></td>
-                    <td class="py-3 px-3 font-semibold text-slate-800 dark:text-slate-200">${m.name}</td>
-                    <td class="py-3 px-3 font-bold text-orange-500">${m.calories} kcal</td>
-                    <td class="py-3 px-3 text-indigo-500 font-medium">${m.protein}g</td>
-                    <td class="py-3 px-3 text-emerald-500 font-medium">${m.carbs}g</td>
-                    <td class="py-3 px-3 text-amber-500 font-medium">${m.fat}g</td>
-                    <td class="py-3 px-3 text-right text-xs text-slate-400">${m.time}</td>
-                </tr>
-            `).join('');
-
-            if (!document.getElementById('tab-charts').classList.contains('hidden')) {
-                renderCharts();
+            // Render Full Meal Table
+            const fullTable = document.getElementById('fullMealTableBody');
+            if (fullTable) {
+                fullTable.innerHTML = '';
+                mealsLog.forEach(m => {
+                    fullTable.innerHTML += `
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                            <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-xs font-semibold">${m.type}</span></td>
+                            <td class="py-3 px-3 font-semibold text-slate-800 dark:text-slate-200">${m.name}</td>
+                            <td class="py-3 px-3 font-bold text-orange-500">${m.calories}</td>
+                            <td class="py-3 px-3 text-indigo-500">${m.protein}g</td>
+                            <td class="py-3 px-3 text-emerald-500">${m.carbs}g</td>
+                            <td class="py-3 px-3 text-amber-500">${m.fat}g</td>
+                            <td class="py-3 px-3 text-right text-xs text-slate-400">${m.time}</td>
+                        </tr>
+                    `;
+                });
             }
         }
 
         function resetDailyData() {
-            if (confirm("Reset today's recorded meals?")) {
+            if (confirm("Reset today's logged meals?")) {
+                const now = new Date().toDateString();
+                mealsLog = mealsLog.filter(m => new Date(m.id || Date.now()).toDateString() !== now);
+                localStorage.setItem('foodlens_bd_meals', JSON.stringify(mealsLog));
+                updateDashboardUI();
+            }
+        }
+
+        function clearAllMeals() {
+            if (confirm("Clear ALL meal logs permanently?")) {
                 mealsLog = [];
                 localStorage.removeItem('foodlens_bd_meals');
                 updateDashboardUI();
             }
         }
 
-        function clearAllMeals() {
-            resetDailyData();
+        // CHARTS LOGIC WITH TIMEFRAME & PERCENTAGE (%) DISPLAY
+        function setChartTimeframe(tf) {
+            activeTimeframe = tf;
+            document.querySelectorAll('.chart-tf-btn').forEach(btn => {
+                btn.className = "chart-tf-btn flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-all";
+            });
+            const activeBtn = document.getElementById(`tf-${tf}`);
+            if (activeBtn) {
+                activeBtn.className = "chart-tf-btn flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-brand-600 text-white shadow-sm transition-all";
+            }
+            renderCharts();
         }
 
-        // CHARTS LOGIC
+        function filterMealsByTimeframe() {
+            const now = new Date();
+            return mealsLog.filter(m => {
+                const mealDate = new Date(m.id || Date.now());
+                if (activeTimeframe === 'today') {
+                    return mealDate.toDateString() === now.toDateString();
+                } else if (activeTimeframe === 'weekly') {
+                    const diffTime = Math.abs(now - mealDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return diffDays <= 7;
+                } else if (activeTimeframe === 'monthly') {
+                    return mealDate.getMonth() === now.getMonth() && mealDate.getFullYear() === now.getFullYear();
+                }
+                return true;
+            });
+        }
+
         function renderCharts() {
+            const filteredMeals = filterMealsByTimeframe();
             const categoryData = {};
-            mealsLog.forEach(m => {
+            let totalCal = 0;
+
+            filteredMeals.forEach(m => {
                 const cat = m.category || "General";
-                categoryData[cat] = (categoryData[cat] || 0) + (m.calories || 0);
+                const cal = m.calories || 0;
+                categoryData[cat] = (categoryData[cat] || 0) + cal;
+                totalCal += cal;
             });
 
             const catLabels = Object.keys(categoryData).length ? Object.keys(categoryData) : ["Rice Dish", "Fish Curry", "Meat", "Street Food"];
@@ -1122,31 +1073,66 @@
                     datasets: [{
                         label: 'Calories (kcal)',
                         data: catValues,
-                        backgroundColor: ['#6d28d9', '#10b981', '#f59e0b', '#ef4444', '#3b82f6']
+                        backgroundColor: ['#6d28d9', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899']
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.raw || 0;
+                                    const pct = totalCal > 0 ? ((val / totalCal) * 100).toFixed(1) : 0;
+                                    return `${val} kcal (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
             });
 
             let totalP = 0, totalC = 0, totalF = 0;
-            mealsLog.forEach(m => { totalP += m.protein || 0; totalC += m.carbs || 0; totalF += m.fat || 0; });
+            filteredMeals.forEach(m => { totalP += m.protein || 0; totalC += m.carbs || 0; totalF += m.fat || 0; });
+            const totalMacroGram = (totalP + totalC + totalF) || 1;
 
             if (macroChartInstance) macroChartInstance.destroy();
             const ctxMacro = document.getElementById('macroDoughnutChart').getContext('2d');
             macroChartInstance = new Chart(ctxMacro, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Protein (g)', 'Carbs (g)', 'Fat (g)'],
+                    labels: [
+                        `Protein: ${Math.round((totalP/totalMacroGram)*100)}%`, 
+                        `Carbs: ${Math.round((totalC/totalMacroGram)*100)}%`, 
+                        `Fat: ${Math.round((totalF/totalMacroGram)*100)}%`
+                    ],
                     datasets: [{
-                        data: [totalP || 1, totalC || 1, totalF || 1],
+                        data: [totalP, totalC, totalF],
                         backgroundColor: ['#6366f1', '#10b981', '#f59e0b']
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.raw || 0;
+                                    const pct = ((val / totalMacroGram) * 100).toFixed(1);
+                                    return `${context.label.split(':')[0]}: ${val}g (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
             });
 
             let totalCalcium = 0, totalMagnesium = 0, totalIron = 0, totalVitC = 0, totalVitD = 0;
-            mealsLog.forEach(m => {
+            filteredMeals.forEach(m => {
                 totalCalcium += m.calcium || 0;
                 totalMagnesium += m.magnesium || 0;
                 totalIron += m.iron || 0;
@@ -1173,7 +1159,7 @@
                             Math.min(100, Math.round((totalMagnesium / 400) * 100)),
                             Math.min(100, Math.round((totalIron / 18) * 100)),
                             Math.min(100, Math.round((totalVitC / 90) * 100)),
-                            Math.min(100, Math.round((totalVitD / 600) * 100))
+                            Math.min(100, Math.round((totalVitD / 90) * 100))
                         ],
                         backgroundColor: '#a855f7'
                     }]
@@ -1181,7 +1167,14 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: { y: { max: 100, beginAtZero: true } }
+                    scales: { y: { max: 100, beginAtZero: true, ticks: { callback: v => v + '%' } } },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.raw}% of Daily Recommended Value`
+                            }
+                        }
+                    }
                 }
             });
         }
@@ -1274,7 +1267,6 @@
             try {
                 let responseJson = null;
 
-                // Support both query key parameter and Authorization header for token keys
                 const headers = { 'Content-Type': 'application/json' };
                 let apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`;
 
@@ -1397,14 +1389,19 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
             const apiKey = getActiveApiKey();
-            if (!apiKey) {
-                promptSetApiKey();
+            let apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`;
+            const headers = { 'Content-Type': 'application/json' };
+
+            if (apiKey.startsWith("AQ.")) {
+                headers['Authorization'] = `Bearer ${apiKey}`;
+            } else {
+                apiUrl += `?key=${apiKey}`;
             }
 
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${getActiveApiKey()}`, {
+                const res = await fetch(apiUrl, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify({
                         contents: [{
                             parts: [{ text: `You are a Bangladeshi Clinical Nutritionist & Dietitian. Answer briefly in Bengali/English with actionable dietary advice for: ${msg}` }]
@@ -1427,13 +1424,117 @@
                     <div class="flex items-start space-x-3">
                         <div class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0">AI</div>
                         <div class="bg-slate-100 dark:bg-slate-700/60 text-slate-800 dark:text-slate-200 p-3.5 rounded-2xl rounded-tl-none max-w-lg text-sm leading-relaxed">
-                            একটি সুষম ডায়েটের জন্য আপনার দৈনন্দিন ভাতের পরিমাণ কিছুটা কমিয়ে ডাল ও শাকসবজির পরিমাণ বাড়াতে পারেন। (API Key সেট করতে ওপরের চাবিতে চাপ দিন)
+                            একটি সুষম ডায়েটের জন্য আপনার দৈনন্দিন ভাতের পরিমাণ কিছুটা কমিয়ে ডাল ও শাকসবজির পরিমাণ বাড়াতে পারেন।
                         </div>
                     </div>
                 `;
             }
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
+
+        // --- DOM INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set Today's Date
+            const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('todayDate').innerText = todayStr;
+
+            // Nav Tabs Click Listeners
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabId = btn.getAttribute('data-tab');
+                    switchTab(tabId);
+                });
+            });
+
+            // Mobile menu toggle
+            const menuBtn = document.getElementById('menuToggle');
+            if (menuBtn) {
+                menuBtn.addEventListener('click', () => {
+                    document.getElementById('sidebar').classList.toggle('-translate-x-full');
+                });
+            }
+
+            // Theme toggle listener
+            const themeBtn = document.getElementById('themeToggle');
+            if (themeBtn) {
+                themeBtn.addEventListener('click', () => {
+                    document.documentElement.classList.toggle('dark');
+                    const isDark = document.documentElement.classList.contains('dark');
+                    document.getElementById('themeLabel').innerText = isDark ? 'Light Mode' : 'Dark Mode';
+                });
+            }
+
+            // Food Search Input Listener
+            const searchInput = document.getElementById('foodSearchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    renderFoodGrid(e.target.value);
+                });
+            }
+
+            // Portion Quantity Change Listener
+            const portionQtyInput = document.getElementById('modalPortionQty');
+            if (portionQtyInput) {
+                portionQtyInput.addEventListener('input', updateModalCalculations);
+            }
+
+            // Modal Confirm Log Button Listener
+            const confirmBtn = document.getElementById('confirmLogBtn');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', confirmAddMealLog);
+            }
+
+            // Photo / Text Mode Switchers
+            const modePhotoBtn = document.getElementById('modePhotoBtn');
+            if (modePhotoBtn) modePhotoBtn.addEventListener('click', () => switchAiMode('photo'));
+
+            const modeTextBtn = document.getElementById('modeTextBtn');
+            if (modeTextBtn) modeTextBtn.addEventListener('click', () => switchAiMode('text'));
+
+            // File Upload / Dropzone Trigger
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('imageFileInput');
+            const triggerUploadBtn = document.getElementById('triggerUploadBtn');
+
+            if (triggerUploadBtn) triggerUploadBtn.addEventListener('click', () => fileInput.click());
+            if (dropZone) dropZone.addEventListener('click', () => fileInput.click());
+            if (fileInput) fileInput.addEventListener('change', handleFileSelect);
+
+            // Camera Listeners
+            const openCameraBtn = document.getElementById('openCameraBtn');
+            if (openCameraBtn) openCameraBtn.addEventListener('click', openCamera);
+
+            const closeCameraBtn = document.getElementById('closeCameraBtn');
+            if (closeCameraBtn) closeCameraBtn.addEventListener('click', stopCamera);
+
+            const switchCameraBtn = document.getElementById('switchCameraBtn');
+            if (switchCameraBtn) switchCameraBtn.addEventListener('click', switchCamera);
+
+            const captureBtn = document.getElementById('captureSnapshotBtn');
+            if (captureBtn) captureBtn.addEventListener('click', takeSnapshot);
+
+            // AI Analysis Trigger
+            const runAiBtn = document.getElementById('runAiAnalysisBtn');
+            if (runAiBtn) runAiBtn.addEventListener('click', analyzeWithGemini);
+
+            const addAiBtn = document.getElementById('addAiMealBtn');
+            if (addAiBtn) addAiBtn.addEventListener('click', addAiMealToLog);
+
+            // AI Dietitian Send Trigger
+            const sendChatBtn = document.getElementById('sendDietitianMsg');
+            if (sendChatBtn) sendChatBtn.addEventListener('click', sendDietitianMessage);
+
+            const chatInput = document.getElementById('dietitianInput');
+            if (chatInput) {
+                chatInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') sendDietitianMessage();
+                });
+            }
+
+            // Initial Renders
+            renderFoodGrid();
+            updateDashboardUI();
+        });
     </script>
 </body>
 </html>
