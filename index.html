@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodLens BD - Bangladeshi Food & Nutrition Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#6d28d9',
+                            600: '#5b21b6',
+                            700: '#4c1d95',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN for Graphical Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js Datalabels Plugin CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Hind Siliguri', sans-serif;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(109, 40, 217, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(109, 40, 217, 0.6);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200 flex flex-col md:flex-row">
+
+    <!-- Mobile Header & Toggle -->
+    <div class="md:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30">
+        <div class="flex items-center space-x-2">
+            <div class="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold text-xl shadow-md">
+                <i class="fa-solid fa-utensils text-sm"></i>
+            </div>
+            <span class="font-bold text-lg text-slate-900 dark:text-white tracking-tight">FoodLens <span class="text-brand-600 dark:text-brand-400">BD</span></span>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button id="langToggleMobile" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                BN / EN
+            </button>
+            <button id="menuToggle" class="p-2 text-slate-600 dark:text-slate-300">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out md:static md:h-screen">
+        <!-- Logo -->
+        <div class="p-5 hidden md:flex items-center justify-between border-b border-slate-100 dark:border-slate-700/50">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-brand-500/20">
+                    <i class="fa-solid fa-bowl-rice text-base"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-900 dark:text-white leading-none">FoodLens <span class="text-brand-600 dark:text-brand-400">BD</span></h1>
+                    <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Nutrition AI</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nav Items -->
+        <nav class="flex-1 p-4 space-y-1.5 overflow-y-auto">
+            <button data-tab="dashboard" class="nav-btn active w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10">
+                <i class="fa-solid fa-chart-pie w-5"></i>
+                <span data-i18n="nav_dashboard">Dashboard</span>
+            </button>
+            <button data-tab="charts" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+                <i class="fa-solid fa-chart-column w-5 text-indigo-500"></i>
+                <span data-i18n="nav_charts">Nutrient Charts</span>
+            </button>
+            <button data-tab="tracker" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+                <i class="fa-solid fa-magnifying-glass-food w-5"></i>
+                <span data-i18n="nav_tracker">BD Food Search</span>
+            </button>
+            <button data-tab="photo" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+                <i class="fa-solid fa-wand-magic-sparkles w-5 text-amber-500"></i>
+                <span data-i18n="nav_ai_photo">AI Photo & Prompt</span>
+            </button>
+            <button data-tab="meals" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+                <i class="fa-solid fa-clock-rotate-left w-5"></i>
+                <span data-i18n="nav_history">Meal Log</span>
+            </button>
+            <button data-tab="dietitian" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+                <i class="fa-solid fa-user-doctor w-5 text-emerald-500"></i>
+                <span data-i18n="nav_dietitian">AI Dietitian BD</span>
+            </button>
+        </nav>
+
+        <!-- Footer / System Actions -->
+        <div class="p-4 border-t border-slate-100 dark:border-slate-700/50 space-y-3">
+            <div class="flex items-center justify-between">
+                <button id="themeToggle" class="flex items-center space-x-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                    <i class="fa-solid fa-moon dark:hidden"></i>
+                    <i class="fa-solid fa-sun hidden dark:inline text-amber-400"></i>
+                    <span id="themeLabel">Dark Mode</span>
+                </button>
+                <button id="langToggle" class="text-xs font-bold px-2.5 py-1 rounded-md bg-brand-100 text-brand-700 dark:bg-slate-700 dark:text-brand-300">
+                    বাংলা
+                </button>
+            </div>
+            <div class="pt-2 flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 text-xs">
+                    BD
+                </div>
+                <div class="text-xs">
+                    <div class="font-semibold text-slate-800 dark:text-slate-200">Fitness Enthusiast</div>
+                    <div class="text-slate-400 text-[10px]">Target: 2,000 kcal</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto p-4 md:p-8">
+        
+        <!-- Top Toolbar / Header -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+            <div>
+                <h2 id="pageTitle" class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Dashboard</h2>
+                <p id="todayDate" class="text-sm text-slate-500 dark:text-slate-400"></p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="switchTab('photo')" class="bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm px-4 py-2.5 rounded-xl transition-all shadow-md shadow-brand-500/20 flex items-center space-x-2">
+                    <i class="fa-solid fa-camera"></i>
+                    <span data-i18n="btn_quick_scan">AI Scan Food</span>
+                </button>
+                <button onclick="resetDailyData()" class="border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm px-3 py-2.5 rounded-xl transition-colors" title="Reset Today's Macros">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- DASHBOARD TAB -->
+        <section id="tab-dashboard" class="tab-content space-y-6">
+            
+            <!-- Daily Macros Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Calories Card -->
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider" data-i18n="macro_calories">Calories</span>
+                            <div class="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
+                                <span id="dash-cal">0</span> <span class="text-xs font-normal text-slate-400">/ <span id="target-cal">2000</span> kcal</span>
+                            </div>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-500/10 text-orange-500 flex items-center justify-center">
+                            <i class="fa-solid fa-fire text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2.5">
+                        <div id="bar-cal" class="bg-orange-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Protein Card -->
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider" data-i18n="macro_protein">Protein</span>
+                            <div class="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
+                                <span id="dash-protein">0</span> <span class="text-xs font-normal text-slate-400">/ <span id="target-protein">120</span> g</span>
+                            </div>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                            <i class="fa-solid fa-drumstick-bite text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2.5">
+                        <div id="bar-protein" class="bg-indigo-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Carbs Card -->
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider" data-i18n="macro_carbs">Carbohydrates</span>
+                            <div class="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
+                                <span id="dash-carbs">0</span> <span class="text-xs font-normal text-slate-400">/ <span id="target-carbs">250</span> g</span>
+                            </div>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                            <i class="fa-solid fa-wheat-awn text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2.5">
+                        <div id="bar-carbs" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Fat Card -->
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider" data-i18n="macro_fat">Fat</span>
+                            <div class="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
+                                <span id="dash-fat">0</span> <span class="text-xs font-normal text-slate-400">/ <span id="target-fat">65</span> g</span>
+                            </div>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                            <i class="fa-solid fa-bottle-droplet text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2.5">
+                        <div id="bar-fat" class="bg-amber-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Add Grid & Recent Logs -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Recent Meal Activity -->
+                <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700/60 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-lg text-slate-900 dark:text-white" data-i18n="recent_meals_title">Today's Meal Log</h3>
+                        <button onclick="switchTab('meals')" class="text-xs font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400" data-i18n="view_all">View All</button>
+                    </div>
+                    <div id="dashboardRecentMeals" class="space-y-3">
+                        <!-- Dynamic Content Here -->
+                    </div>
+                </div>
+
+                <!-- Quick AI Nutrition Tip Card -->
+                <div class="bg-gradient-to-br from-brand-600 to-brand-700 text-white rounded-2xl p-6 shadow-md flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center space-x-2 text-brand-200 text-xs font-bold uppercase tracking-wider mb-2">
+                            <i class="fa-solid fa-lightbulb"></i>
+                            <span data-i18n="bd_diet_tip">Bangladeshi Diet Tip</span>
+                        </div>
+                        <h4 class="font-bold text-xl mb-2" id="quickTipTitle">Rice Intake Control</h4>
+                        <p class="text-brand-100 text-sm leading-relaxed" id="quickTipBody">
+                            Replacing 1 cup of White Rice (Bhat) with Dal or Sabji reduces your daily glycemic load while providing essential dietary fiber and plant protein.
+                        </p>
+                    </div>
+                    <button onclick="switchTab('dietitian')" class="mt-6 w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl py-2.5 font-medium text-sm transition-all flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-comments"></i>
+                        <span data-i18n="ask_ai_dietitian">Ask AI Dietitian</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ANALYTICS CHARTS TAB -->
+        <section id="tab-charts" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Category Breakdown Bar Chart -->
+                <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <h3 class="font-bold text-base md:text-lg text-slate-900 dark:text-white" data-i18n="chart_category_title">Calories by Category</h3>
+                                <p class="text-[11px] text-slate-400">Calories consumed per food category with unique color themes</p>
+                            </div>
+                            <div class="w-8 h-8 rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+                                <i class="fa-solid fa-chart-bar text-xs"></i>
+                            </div>
+                        </div>
+                        <div class="relative h-48 md:h-56 w-full flex items-center justify-center">
+                            <canvas id="categoryBarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Macro Ratio Doughnut Chart -->
+                <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <h3 class="font-bold text-base md:text-lg text-slate-900 dark:text-white" data-i18n="chart_macro_title">Macro Distribution Ratio</h3>
+                                <p class="text-[11px] text-slate-400">Protein vs Carbs vs Fat proportion ratio</p>
+                            </div>
+                            <div class="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                                <i class="fa-solid fa-chart-pie text-xs"></i>
+                            </div>
+                        </div>
+                        <div class="relative h-48 md:h-56 w-full flex items-center justify-center">
+                            <canvas id="macroDoughnutChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Essential Vitamins & Minerals (Micro-Nutrients) Breakdown Chart -->
+            <div class="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-base md:text-lg text-slate-900 dark:text-white">Vitamins & Essential Minerals (% RDI)</h3>
+                        <p class="text-xs text-slate-400">Daily intake progress of Calcium, Magnesium, Iron, Vitamin C & Vitamin D</p>
+                    </div>
+                    <div class="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-500/10 text-purple-500 flex items-center justify-center">
+                        <i class="fa-solid fa-capsules text-sm"></i>
+                    </div>
+                </div>
+
+                <div class="relative h-48 md:h-52 w-full">
+                    <canvas id="microNutrientChart"></canvas>
+                </div>
+
+                <!-- Quick Micro Badges -->
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 text-center text-xs">
+                    <div class="p-2.5 bg-sky-50 dark:bg-sky-500/10 rounded-xl border border-sky-100 dark:border-sky-500/20">
+                        <span class="block text-[10px] text-slate-400 uppercase font-bold">Calcium</span>
+                        <span id="val-calcium" class="font-bold text-sky-600 dark:text-sky-400">0 / 1000 mg</span>
+                    </div>
+                    <div class="p-2.5 bg-teal-50 dark:bg-teal-500/10 rounded-xl border border-teal-100 dark:border-teal-500/20">
+                        <span class="block text-[10px] text-slate-400 uppercase font-bold">Magnesium</span>
+                        <span id="val-magnesium" class="font-bold text-teal-600 dark:text-teal-400">0 / 400 mg</span>
+                    </div>
+                    <div class="p-2.5 bg-rose-50 dark:bg-rose-500/10 rounded-xl border border-rose-100 dark:border-rose-500/20">
+                        <span class="block text-[10px] text-slate-400 uppercase font-bold">Iron</span>
+                        <span id="val-iron" class="font-bold text-rose-600 dark:text-rose-400">0 / 18 mg</span>
+                    </div>
+                    <div class="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl border border-amber-100 dark:border-amber-500/20">
+                        <span class="block text-[10px] text-slate-400 uppercase font-bold">Vit C</span>
+                        <span id="val-vitc" class="font-bold text-amber-600 dark:text-amber-400">0 / 90 mg</span>
+                    </div>
+                    <div class="p-2.5 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl border border-indigo-100 dark:border-indigo-500/20 col-span-2 sm:col-span-1">
+                        <span class="block text-[10px] text-slate-400 uppercase font-bold">Vit D</span>
+                        <span id="val-vitd" class="font-bold text-indigo-600 dark:text-indigo-400">0 / 600 IU</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- BANGLADESHI FOOD SEARCH TAB -->
+        <section id="tab-tracker" class="tab-content hidden space-y-6">
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white mb-4" data-i18n="search_bd_food">Search Bangladeshi Food Database</h3>
+                
+                <div class="relative mb-6">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-slate-400"></i>
+                    <input type="text" id="foodSearchInput" placeholder="Search Kacchi, Shorshe Ilish, Bhat, Dal, Paratha, Fuchka..." 
+                           class="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                </div>
+
+                <!-- Food Cards Grid -->
+                <div id="foodGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- AI PHOTO & PROMPT ANALYZER TAB -->
+        <section id="tab-photo" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Input Panel -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm space-y-5">
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-900 dark:text-white" data-i18n="ai_analyzer_title">Gemini AI Food Vision & Text Scanner</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" data-i18n="ai_analyzer_desc">Upload a photo of your Bangladeshi dish or describe what you ate in Bengali or English.</p>
+                    </div>
+
+                    <!-- Mode Selectors -->
+                    <div class="flex border-b border-slate-200 dark:border-slate-700">
+                        <button id="modePhotoBtn" class="py-2.5 px-4 font-semibold text-sm border-b-2 border-brand-600 text-brand-600 dark:text-brand-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-camera"></i>
+                            <span data-i18n="tab_photo_upload">Photo Analysis</span>
+                        </button>
+                        <button id="modeTextBtn" class="py-2.5 px-4 font-semibold text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center space-x-2">
+                            <i class="fa-solid fa-pen"></i>
+                            <span data-i18n="tab_text_prompt">Text Description</span>
+                        </button>
+                    </div>
+
+                    <!-- Photo Upload Container -->
+                    <div id="photoInputBox" class="space-y-4">
+                        <!-- Dual option buttons: Upload vs Live Camera -->
+                        <div class="grid grid-cols-2 gap-3 mb-2">
+                            <button id="openCameraBtn" class="flex items-center justify-center space-x-2 py-3 px-4 bg-brand-50 dark:bg-brand-500/10 border border-brand-200 dark:border-brand-500/30 text-brand-600 dark:text-brand-400 rounded-xl font-semibold text-sm hover:bg-brand-100 dark:hover:bg-brand-500/20 transition-all">
+                                <i class="fa-solid fa-camera"></i>
+                                <span data-i18n="take_photo_btn">Take Photo</span>
+                            </button>
+                            <button id="triggerUploadBtn" class="flex items-center justify-center space-x-2 py-3 px-4 bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200 rounded-xl font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                                <i class="fa-solid fa-file-arrow-up"></i>
+                                <span data-i18n="upload_file_btn">Upload File</span>
+                            </button>
+                        </div>
+
+                        <div id="dropZone" class="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-brand-500 dark:hover:border-brand-400 rounded-2xl p-6 text-center cursor-pointer transition-colors relative">
+                            <input type="file" id="imageFileInput" accept="image/*" class="hidden">
+                            <div id="uploadPlaceholder" class="space-y-2">
+                                <div class="w-12 h-12 rounded-full bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center mx-auto text-xl">
+                                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                                </div>
+                                <div class="text-sm font-semibold text-slate-700 dark:text-slate-200" data-i18n="click_to_upload">Click or drag food image here</div>
+                                <div class="text-xs text-slate-400">JPG, PNG, WEBP (Max 5MB)</div>
+                            </div>
+                            <img id="imagePreview" class="hidden max-h-56 mx-auto rounded-xl object-cover shadow-sm">
+                        </div>
+                    </div>
+
+                    <!-- Text Input Container -->
+                    <div id="textInputBox" class="hidden space-y-4">
+                        <textarea id="aiTextPrompt" rows="4" placeholder="e.g., I ate 1 plate of Kacchi Biryani with a boiled egg and 250ml Borhani for lunch..."
+                                  class="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm"></textarea>
+                    </div>
+
+                    <!-- Meal Type Selection -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider" data-i18n="select_meal_type">Select Meal Type</label>
+                        <select id="aiMealType" class="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="Breakfast">Breakfast / সকালের নাস্তা</option>
+                            <option value="Lunch" selected>Lunch / দুপুরের খাবার</option>
+                            <option value="Dinner">Dinner / রাতের খাবার</option>
+                            <option value="Snacks">Snack / হালকা নাস্তা</option>
+                        </select>
+                    </div>
+
+                    <button id="runAiAnalysisBtn" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md shadow-brand-500/20 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-sparkles"></i>
+                        <span data-i18n="analyze_with_gemini">Analyze Nutrition with Gemini</span>
+                    </button>
+                </div>
+
+                <!-- Analysis Results Panel -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-900 dark:text-white mb-4" data-i18n="ai_results_title">Gemini AI Estimation Results</h3>
+                        
+                        <!-- Empty State -->
+                        <div id="aiEmptyState" class="py-16 text-center text-slate-400">
+                            <i class="fa-solid fa-wand-magic-sparkles text-4xl mb-3 text-slate-300 dark:text-slate-600"></i>
+                            <p class="text-sm" data-i18n="ai_empty_msg">Upload an image or enter a food prompt to see detailed macronutrient estimates.</p>
+                        </div>
+
+                        <!-- Loading State -->
+                        <div id="aiLoadingState" class="hidden py-16 text-center space-y-3">
+                            <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-brand-600 border-t-transparent"></div>
+                            <p class="text-sm font-medium text-brand-600 dark:text-brand-400" data-i18n="ai_loading">Analyzing Bangladeshi food database & image...</p>
+                        </div>
+
+                        <!-- Result Display -->
+                        <div id="aiResultCard" class="hidden space-y-5">
+                            <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700">
+                                <div>
+                                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider" data-i18n="detected_dish">Detected Dish</div>
+                                    <div id="resDishName" class="text-xl font-bold text-slate-900 dark:text-white mt-0.5">-</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-extrabold text-orange-500" id="resCalories">0</div>
+                                    <div class="text-[10px] text-slate-400 uppercase font-bold">Estimated Calories</div>
+                                </div>
+                            </div>
+
+                            <!-- Macros Grid -->
+                            <div class="grid grid-cols-3 gap-3 text-center">
+                                <div class="p-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl border border-indigo-100 dark:border-indigo-500/20">
+                                    <div class="text-xs text-indigo-500 font-semibold" data-i18n="macro_protein">Protein</div>
+                                    <div id="resProtein" class="text-lg font-bold text-indigo-700 dark:text-indigo-400 mt-1">0g</div>
+                                </div>
+                                <div class="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl border border-emerald-100 dark:border-emerald-500/20">
+                                    <div class="text-xs text-emerald-500 font-semibold" data-i18n="macro_carbs">Carbs</div>
+                                    <div id="resCarbs" class="text-lg font-bold text-emerald-700 dark:text-emerald-400 mt-1">0g</div>
+                                </div>
+                                <div class="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl border border-amber-100 dark:border-amber-500/20">
+                                    <div class="text-xs text-amber-500 font-semibold" data-i18n="macro_fat">Fat</div>
+                                    <div id="resFat" class="text-lg font-bold text-amber-700 dark:text-amber-400 mt-1">0g</div>
+                                </div>
+                            </div>
+
+                            <!-- Description / Breakdown -->
+                            <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl">
+                                <div class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1" data-i18n="nutrition_notes">Dietary Breakdown & Advice</div>
+                                <p id="resDescription" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add to Log Button -->
+                    <button id="addAiMealBtn" class="hidden w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span data-i18n="add_to_daily_log">Add Meal to Today's Tracker</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- MEAL LOG HISTORY TAB -->
+        <section id="tab-meals" class="tab-content hidden space-y-6">
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-bold text-lg text-slate-900 dark:text-white" data-i18n="meal_history_title">Full Meal History</h3>
+                    <button onclick="clearAllMeals()" class="text-xs font-semibold text-rose-500 hover:text-rose-600 border border-rose-200 dark:border-rose-900/40 px-3 py-1.5 rounded-lg">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Clear Log
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-400 uppercase">
+                                <th class="py-3 px-3">Type</th>
+                                <th class="py-3 px-3">Meal Name</th>
+                                <th class="py-3 px-3">Calories</th>
+                                <th class="py-3 px-3">Protein</th>
+                                <th class="py-3 px-3">Carbs</th>
+                                <th class="py-3 px-3">Fat</th>
+                                <th class="py-3 px-3 text-right">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fullMealTableBody" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI DIETITIAN TAB -->
+        <section id="tab-dietitian" class="tab-content hidden space-y-6">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm flex flex-col h-[600px]">
+                <!-- Chat Header -->
+                <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-base shadow-md">
+                        <i class="fa-solid fa-user-doctor"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-900 dark:text-white text-base">Bangladeshi AI Dietitian</h3>
+                        <p class="text-xs text-slate-400">Ask about Bangladeshi foods, nutrition goals & health tips</p>
+                    </div>
+                </div>
+
+                <!-- Chat Log -->
+                <div id="chatContainer" class="flex-1 p-4 overflow-y-auto space-y-4">
+                    <div class="flex items-start space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0">AI</div>
+                        <div class="bg-slate-100 dark:bg-slate-700/60 text-slate-800 dark:text-slate-200 p-3.5 rounded-2xl rounded-tl-none max-w-lg text-sm leading-relaxed">
+                            আসসালামু আলাইকুম! আমি আপনার বাংলাদেশী AI ডায়েটিশিয়ান। কাচ্চি বিরিয়ানি, ভুনা খিচুড়ি বা ডায়েট সংক্রান্ত যেকোনো প্রশ্ন আমাকে করতে পারেন।
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Input Bar -->
+                <div class="p-3 border-t border-slate-100 dark:border-slate-700 flex items-center space-x-2">
+                    <input type="text" id="dietitianInput" placeholder="Ask something (e.g. How to balance rice intake?)" 
+                           class="flex-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <button id="sendDietitianMsg" class="w-11 h-11 bg-brand-600 hover:bg-brand-700 text-white rounded-xl flex items-center justify-center transition-all shadow-md">
+                        <i class="fa-solid fa-paper-plane text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- PORTION SELECTION MODAL -->
+    <div id="portionModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-700 space-y-4">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h3 id="modalFoodTitle" class="text-xl font-bold text-slate-900 dark:text-white">-</h3>
+                    <span id="modalFoodCategory" class="text-xs font-semibold px-2 py-0.5 rounded bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400">Category</span>
+                </div>
+                <button onclick="closePortionModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3">
+                <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider" data-i18n="select_serving_size">Serving Quantity</label>
+                <div class="flex items-center space-x-3">
+                    <input type="number" id="modalPortionQty" value="1" min="0.25" step="0.25" class="w-24 p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-center text-base focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <span id="modalUnitName" class="text-sm font-medium text-slate-600 dark:text-slate-300">serving</span>
+                </div>
+            </div>
+
+            <!-- Dynamic Macro Preview -->
+            <div class="grid grid-cols-4 gap-2 py-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl text-center">
+                <div>
+                    <div class="text-[10px] text-slate-400 font-bold uppercase">Calories</div>
+                    <div id="modalCal" class="font-extrabold text-orange-500 text-sm">0</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-400 font-bold uppercase">Protein</div>
+                    <div id="modalProt" class="font-extrabold text-indigo-500 text-sm">0g</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-400 font-bold uppercase">Carbs</div>
+                    <div id="modalCarb" class="font-extrabold text-emerald-500 text-sm">0g</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-400 font-bold uppercase">Fat</div>
+                    <div id="modalFat" class="font-extrabold text-amber-500 text-sm">0g</div>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider" data-i18n="select_meal_type">Meal Type</label>
+                <select id="modalMealType" class="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="Breakfast">Breakfast / সকালের নাস্তা</option>
+                    <option value="Lunch" selected>Lunch / দুপুরের খাবার</option>
+                    <option value="Dinner">Dinner / রাতের খাবার</option>
+                    <option value="Snacks">Snack / হালকা নাস্তা</option>
+                </select>
+            </div>
+
+            <button id="confirmLogBtn" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 rounded-xl transition-all shadow-md shadow-brand-500/20" data-i18n="confirm_add_log">
+                Confirm & Add to Daily Log
+            </button>
+        </div>
+    </div>
+
+    <!-- LIVE CAMERA CAPTURE MODAL -->
+    <div id="cameraModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex flex-col items-center justify-between p-4 hidden">
+        <div class="w-full max-w-md flex items-center justify-between text-white py-2">
+            <h4 class="font-bold text-base flex items-center space-x-2">
+                <i class="fa-solid fa-camera text-brand-400"></i>
+                <span data-i18n="live_camera_title">Take Food Photo</span>
+            </h4>
+            <button id="closeCameraBtn" class="p-2 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="relative w-full max-w-md flex-1 my-2 bg-black rounded-2xl overflow-hidden flex items-center justify-center border border-slate-800">
+            <video id="cameraVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+            <!-- Overlay Viewport Frame -->
+            <div class="absolute inset-8 border-2 border-dashed border-white/40 rounded-3xl pointer-events-none flex items-center justify-center">
+                <span class="text-white/60 text-xs font-semibold bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm" data-i18n="align_food_text">Center food dish inside frame</span>
+            </div>
+            <canvas id="snapshotCanvas" class="hidden"></canvas>
+        </div>
+
+        <div class="w-full max-w-md flex items-center justify-around py-4">
+            <button id="switchCameraBtn" class="w-12 h-12 rounded-full bg-slate-800 text-white flex items-center justify-center hover:bg-slate-700">
+                <i class="fa-solid fa-camera-rotate text-lg"></i>
+            </button>
+            <button id="captureSnapshotBtn" class="w-16 h-16 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-lg shadow-brand-500/50 hover:bg-brand-500 active:scale-95 transition-all">
+                <div class="w-12 h-12 rounded-full border-2 border-white"></div>
+            </button>
+            <div class="w-12 h-12"></div> <!-- Spacer for balance -->
+        </div>
+    </div>
+
+    <!-- SCRIPT LOGIC -->
+    <script>
+        // --- BANGLADESHI FOOD DATABASE ---
+        const bdFoodDatabase = [
+            { id: 1, nameEn: "Kacchi Biryani", nameBn: "কাচ্চি বিরিয়ানি", category: "Rice Dish", calories: 650, protein: 28, carbs: 72, fat: 28, unit: "1 Plate (approx 350g)", icon: "fa-bowl-rice", calcium: 120, magnesium: 45, iron: 4.2, vitC: 2, vitD: 40 },
+            { id: 2, nameEn: "Shorshe Ilish", nameBn: "সর্ষে ইলিশ", category: "Fish Curry", calories: 380, protein: 32, carbs: 4, fat: 26, unit: "1 Piece with Gravy", icon: "fa-fish", calcium: 180, magnesium: 60, iron: 2.8, vitC: 5, vitD: 350 },
+            { id: 3, nameEn: "Sada Bhat (Plain Rice)", nameBn: "সাদা ভাত", category: "Staple", calories: 205, protein: 4, carbs: 45, fat: 0.5, unit: "1 Cup cooked (150g)", icon: "fa-bowl-rice", calcium: 15, magnesium: 20, iron: 0.8, vitC: 0, vitD: 0 },
+            { id: 4, nameEn: "Beef Bhuna", nameBn: "গরুর ভুনা মাংস", category: "Meat", calories: 420, protein: 35, carbs: 6, fat: 28, unit: "1 Medium Bowl (200g)", icon: "fa-drumstick-bite", calcium: 30, magnesium: 35, iron: 5.5, vitC: 1, vitD: 10 },
+            { id: 5, nameEn: "Chicken Roast (Wedding Style)", nameBn: "চিকেন রোস্ট", category: "Poultry", calories: 340, protein: 29, carbs: 8, fat: 22, unit: "1 Piece with Gravy", icon: "fa-drumstick-bite", calcium: 25, magnesium: 30, iron: 2.1, vitC: 3, vitD: 15 },
+            { id: 6, nameEn: "Patla Masoor Dal", nameBn: "পাতলা মসুর ডাল", category: "Lentils", calories: 110, protein: 7, carbs: 16, fat: 2.5, unit: "1 Bowl (200ml)", icon: "fa-bowl-food", calcium: 40, magnesium: 50, iron: 3.2, vitC: 4, vitD: 0 },
+            { id: 7, nameEn: "Alu Bhorta", nameBn: "আলো ভর্তা", category: "Bhorta", calories: 130, protein: 2.5, carbs: 22, fat: 4, unit: "1 Ball (80g)", icon: "fa-circle", calcium: 20, magnesium: 28, iron: 1.1, vitC: 18, vitD: 0 },
+            { id: 8, nameEn: "Begun Bharta / Bhaji", nameBn: "বেগুন ভাজি / ভর্তা", category: "Bhorta", calories: 145, protein: 2, carbs: 12, fat: 10, unit: "1 Serving", icon: "fa-eggplant", calcium: 30, magnesium: 22, iron: 1.0, vitC: 8, vitD: 0 },
+            { id: 9, nameEn: "Bhuna Khichuri", nameBn: "ভুনা খিচুড়ি", category: "Rice Dish", calories: 480, protein: 16, carbs: 68, fat: 16, unit: "1 Plate (300g)", icon: "fa-bowl-rice", calcium: 65, magnesium: 70, iron: 3.8, vitC: 6, vitD: 0 },
+            { id: 10, nameEn: "Roti / Handmade Atta Roti", nameBn: "আটার রুটি", category: "Bread", calories: 85, protein: 3, carbs: 17, fat: 0.5, unit: "1 Piece", icon: "fa-bread-slice", calcium: 18, magnesium: 32, iron: 1.3, vitC: 0, vitD: 0 },
+            { id: 11, nameEn: "Paratha (Oil fried)", nameBn: "পরোটা", category: "Bread", calories: 240, protein: 4, carbs: 32, fat: 11, unit: "1 Piece", icon: "fa-cookie", calcium: 22, magnesium: 25, iron: 1.5, vitC: 0, vitD: 0 },
+            { id: 12, nameEn: "Chotpoti", nameBn: "চটপটি", category: "Street Food", calories: 280, protein: 12, carbs: 42, fat: 7, unit: "1 Plate", icon: "fa-bowl-food", calcium: 55, magnesium: 65, iron: 4.1, vitC: 12, vitD: 25 },
+            { id: 13, nameEn: "Fuchka (6 pcs)", nameBn: "ফুচকা (৬ পিস)", category: "Street Food", calories: 220, protein: 4, carbs: 32, fat: 9, unit: "1 Plate", icon: "fa-circle-dot", calcium: 35, magnesium: 30, iron: 2.0, vitC: 7, vitD: 0 },
+            { id: 14, nameEn: "Ruhi Fish Curry", nameBn: "রুই মাছের ঝোল", category: "Fish Curry", calories: 210, protein: 24, carbs: 5, fat: 11, unit: "1 Piece with Curry", icon: "fa-fish", calcium: 140, magnesium: 40, iron: 2.2, vitC: 4, vitD: 120 },
+            { id: 15, nameEn: "Singara / Samosa", nameBn: "সিঙ্গাড়া / সমুচা", category: "Snack", calories: 160, protein: 3, carbs: 20, fat: 8, unit: "1 Piece", icon: "fa-triangle-exclamation", calcium: 15, magnesium: 18, iron: 0.9, vitC: 5, vitD: 0 }
+        ];
+
+        // --- LANGUAGE DICTIONARY ---
+        const i18n = {
+            en: {
+                nav_dashboard: "Dashboard",
+                nav_charts: "Nutrient Charts",
+                nav_tracker: "BD Food Search",
+                nav_ai_photo: "AI Photo & Prompt",
+                nav_history: "Meal Log",
+                nav_dietitian: "AI Dietitian BD",
+                btn_quick_scan: "AI Scan Food",
+                macro_calories: "Calories",
+                macro_protein: "Protein",
+                macro_carbs: "Carbohydrates",
+                macro_fat: "Fat",
+                recent_meals_title: "Today's Meal Log",
+                view_all: "View All",
+                bd_diet_tip: "Bangladeshi Diet Tip",
+                ask_ai_dietitian: "Ask AI Dietitian",
+                search_bd_food: "Search Bangladeshi Food Database",
+                chart_category_title: "Calories by Category",
+                chart_macro_title: "Macro Distribution Ratio",
+                ai_analyzer_title: "Gemini AI Food Vision & Text Scanner",
+                ai_analyzer_desc: "Upload a photo of your Bangladeshi dish or describe what you ate in Bengali or English.",
+                tab_photo_upload: "Photo Analysis",
+                tab_text_prompt: "Text Description",
+                click_to_upload: "Click or drag food image here",
+                select_meal_type: "Select Meal Type",
+                analyze_with_gemini: "Analyze Nutrition",
+                ai_results_title: "Gemini AI Estimation Results",
+                ai_empty_msg: "Upload an image or enter a food prompt to see detailed macronutrient estimates.",
+                ai_loading: "Analyzing Bangladeshi food database & image...",
+                detected_dish: "Detected Dish",
+                nutrition_notes: "Dietary Breakdown & Advice",
+                add_to_daily_log: "Add Meal to Today's Tracker",
+                meal_history_title: "Full Meal History",
+                select_serving_size: "Serving Quantity",
+                confirm_add_log: "Confirm & Add to Daily Log",
+                take_photo_btn: "Take Photo",
+                upload_file_btn: "Upload File",
+                live_camera_title: "Take Food Photo",
+                align_food_text: "Center food dish inside frame"
+            },
+            bn: {
+                nav_dashboard: "ড্যাশবোর্ড",
+                nav_charts: "নিউট্রিয়েন্ট চার্ট",
+                nav_tracker: "খাবারের সার্চ",
+                nav_ai_photo: "AI ছবি ও প্রম্পট",
+                nav_history: "মিল লগ",
+                nav_dietitian: "AI ডায়েটিশিয়ান BD",
+                btn_quick_scan: "AI স্ক্যান খাবার",
+                macro_calories: "ক্যালোরি",
+                macro_protein: "প্রোটিন",
+                macro_carbs: "কার্বোহাইড্রেট",
+                macro_fat: "ফ্যাট",
+                recent_meals_title: "আজকের খাবারের তালিকা",
+                view_all: "সব দেখুন",
+                bd_diet_tip: "বাংলাদেশী ডায়েট টিপস",
+                ask_ai_dietitian: "AI ডায়েটিশিয়ানকে জিজ্ঞাসা করুন",
+                search_bd_food: "বাংলাদেশী খাবারের ডাটাবেজ সার্চ করুন",
+                chart_category_title: "ক্যাটাগরি অনুযায়ী ক্যালরি",
+                chart_macro_title: "ম্যাক্রো উপাদানের অনুপাত",
+                ai_analyzer_title: "Gemini AI ফুড ভিশন ও প্রম্পট স্ক্যানার",
+                ai_analyzer_desc: "আপনার দেশী খাবারের ছবি আপলোড করুন অথবা বাংলায় বিস্তারিত লিখে নিউট্রিশন বের করুন।",
+                tab_photo_upload: "ছবি অ্যানালাইসিস",
+                tab_text_prompt: "টেক্সট বিবরণ",
+                click_to_upload: "খাবারের ছবি এখানে ড্র্যাগ বা আপলোড করুন",
+                select_meal_type: "খাবারের সময় নির্বাচন করুন",
+                analyze_with_gemini: "Analyze Nutrition",
+                ai_results_title: "Gemini AI নিউট্রিশন অনুমান",
+                ai_empty_msg: "ম্যাক্রোনাট্রিয়েন্ট দেখার জন্য একটি ছবি বা টেক্সট প্রম্পট দিন।",
+                ai_loading: "বাংলাদেশী ফুড ডাটাবেজ ও ছবি বিশ্লেষণ করা হচ্ছে...",
+                detected_dish: "চিহ্নিত খাবার",
+                nutrition_notes: "ডায়েট বিশদ ও পরামর্শ",
+                add_to_daily_log: "আজকের ট্র্যাকারে যুক্ত করুন",
+                meal_history_title: "সম্পূর্ণ হিস্ট্রি",
+                select_serving_size: "পরিমাণ নির্বাচন করুন",
+                confirm_add_log: "কনফার্ম করে লগে যোগ করুন",
+                take_photo_btn: "ক্যামেরা খুলুন",
+                upload_file_btn: "ফাইল আপলোড",
+                live_camera_title: "খাবারের ছবি তুলুন",
+                align_food_text: "খাবারের প্লেটটি ফ্রেমের মাঝে রাখুন"
+            }
+        };
+
+        // --- GLOBAL APP STATE ---
+        let currentLang = 'en';
+        let dailyTargets = { calories: 2000, protein: 120, carbs: 250, fat: 65 };
+        let mealsLog = JSON.parse(localStorage.getItem('foodlens_bd_meals')) || [];
+        let selectedFoodForModal = null;
+        let activeAiResult = null;
+        let selectedImageBase64 = null;
+        let mediaStream = null;
+        let currentFacingMode = 'environment';
+        let categoryChartInstance = null;
+        let macroChartInstance = null;
+        let microChartInstance = null;
+
+        const GEMINI_API_KEY = "";
+
+        // Initialize App safely on window load
+        window.onload = function() {
+            setTodayDate();
+            renderFoodGrid(bdFoodDatabase);
+            updateDashboard();
+            setupEventListeners();
+        };
+
+        function setTodayDate() {
+            const dateEl = document.getElementById('todayDate');
+            if (dateEl) {
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                dateEl.textContent = new Date().toLocaleDateString('en-US', options);
+            }
+        }
+
+        // --- TAB SWITCHING ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active', 'text-brand-600', 'dark:text-brand-400', 'bg-brand-50', 'dark:bg-brand-500/10');
+                btn.classList.add('text-slate-600', 'dark:text-slate-400');
+            });
+
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if (targetTab) targetTab.classList.remove('hidden');
+
+            const activeBtn = document.querySelector(`[data-tab="${tabId}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('active', 'text-brand-600', 'dark:text-brand-400', 'bg-brand-50', 'dark:bg-brand-500/10');
+                activeBtn.classList.remove('text-slate-600', 'dark:text-slate-400');
+            }
+
+            const pageTitles = {
+                dashboard: "Dashboard",
+                charts: "Nutrient Analytics Charts",
+                tracker: "BD Food Database Search",
+                photo: "AI Food Vision & Query Scanner",
+                meals: "Full Meal History",
+                dietitian: "AI Dietitian BD"
+            };
+            const titleEl = document.getElementById('pageTitle');
+            if (titleEl) titleEl.textContent = pageTitles[tabId] || "Dashboard";
+            
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) sidebar.classList.add('-translate-x-full');
+
+            if (tabId === 'charts') {
+                renderCharts();
+            }
+        }
+
+        // --- DASHBOARD UPDATES ---
+        function updateDashboard() {
+            let totals = mealsLog.reduce((acc, meal) => {
+                acc.calories += meal.calories || 0;
+                acc.protein += meal.protein || 0;
+                acc.carbs += meal.carbs || 0;
+                acc.fat += meal.fat || 0;
+                return acc;
+            }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+            const calEl = document.getElementById('dash-cal');
+            const protEl = document.getElementById('dash-protein');
+            const carbEl = document.getElementById('dash-carbs');
+            const fatEl = document.getElementById('dash-fat');
+
+            if (calEl) calEl.textContent = Math.round(totals.calories);
+            if (protEl) protEl.textContent = Math.round(totals.protein);
+            if (carbEl) carbEl.textContent = Math.round(totals.carbs);
+            if (fatEl) fatEl.textContent = Math.round(totals.fat);
+
+            const barCal = document.getElementById('bar-cal');
+            const barProt = document.getElementById('bar-protein');
+            const barCarb = document.getElementById('bar-carbs');
+            const barFat = document.getElementById('bar-fat');
+
+            if (barCal) barCal.style.width = `${Math.min(100, (totals.calories / dailyTargets.calories) * 100)}%`;
+            if (barProt) barProt.style.width = `${Math.min(100, (totals.protein / dailyTargets.protein) * 100)}%`;
+            if (barCarb) barCarb.style.width = `${Math.min(100, (totals.carbs / dailyTargets.carbs) * 100)}%`;
+            if (barFat) barFat.style.width = `${Math.min(100, (totals.fat / dailyTargets.fat) * 100)}%`;
+
+            renderRecentMeals();
+            renderFullMealTable();
+            renderCharts();
+        }
+
+        // --- CHARTS RENDER FUNCTION ---
+        function renderCharts() {
+            const barCanvas = document.getElementById('categoryBarChart');
+            const doughnutCanvas = document.getElementById('macroDoughnutChart');
+            const microCanvas = document.getElementById('microNutrientChart');
+            if (!barCanvas || !doughnutCanvas) return;
+
+            // Group Calories by Category
+            const categoryMap = {
+                "Rice Dish": 0,
+                "Fish Curry": 0,
+                "Meat": 0,
+                "Poultry": 0,
+                "Lentils": 0,
+                "Bhorta": 0,
+                "Bread": 0,
+                "Street Food": 0,
+                "Snack": 0,
+                "Other": 0
+            };
+
+            let totals = { protein: 0, carbs: 0, fat: 0, calcium: 0, magnesium: 0, iron: 0, vitC: 0, vitD: 0 };
+
+            mealsLog.forEach(meal => {
+                totals.protein += meal.protein || 0;
+                totals.carbs += meal.carbs || 0;
+                totals.fat += meal.fat || 0;
+
+                const match = bdFoodDatabase.find(f => f.nameEn.toLowerCase() === (meal.name || '').toLowerCase());
+                if (match) {
+                    totals.calcium += match.calcium || 0;
+                    totals.magnesium += match.magnesium || 0;
+                    totals.iron += match.iron || 0;
+                    totals.vitC += match.vitC || 0;
+                    totals.vitD += match.vitD || 0;
+                }
+
+                const cat = match ? match.category : "Other";
+                if (categoryMap[cat] !== undefined) {
+                    categoryMap[cat] += (meal.calories || 0);
+                } else {
+                    categoryMap["Other"] += (meal.calories || 0);
+                }
+            });
+
+            // Update Micro Badges
+            const calEl = document.getElementById('val-calcium');
+            const magEl = document.getElementById('val-magnesium');
+            const ironEl = document.getElementById('val-iron');
+            const vitcEl = document.getElementById('val-vitc');
+            const vitdEl = document.getElementById('val-vitd');
+
+            if (calEl) calEl.textContent = `${Math.round(totals.calcium)} / 1000 mg`;
+            if (magEl) magEl.textContent = `${Math.round(totals.magnesium)} / 400 mg`;
+            if (ironEl) ironEl.textContent = `${Math.round(totals.iron * 10) / 10} / 18 mg`;
+            if (vitcEl) vitcEl.textContent = `${Math.round(totals.vitC)} / 90 mg`;
+            if (vitdEl) vitdEl.textContent = `${Math.round(totals.vitD)} / 600 IU`;
+
+            // Filter out empty categories for clean visual
+            const activeCategories = Object.keys(categoryMap).filter(k => categoryMap[k] > 0);
+            const activeValues = activeCategories.map(k => Math.round(categoryMap[k]));
+
+            // Category Color Palette
+            const categoryColors = {
+                "Rice Dish": "#8b5cf6",
+                "Fish Curry": "#06b6d4",
+                "Meat": "#ef4444",
+                "Poultry": "#f97316",
+                "Lentils": "#eab308",
+                "Bhorta": "#10b981",
+                "Bread": "#6366f1",
+                "Street Food": "#ec4899",
+                "Snack": "#14b8a6",
+                "Other": "#64748b"
+            };
+
+            const bgColors = activeCategories.map(k => categoryColors[k] || "#64748b");
+
+            // Render Bar Chart
+            if (categoryChartInstance) categoryChartInstance.destroy();
+            categoryChartInstance = new Chart(barCanvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: activeCategories.length ? activeCategories : ['No Data'],
+                    datasets: [{
+                        label: 'Calories (kcal)',
+                        data: activeValues.length ? activeValues : [0],
+                        backgroundColor: bgColors.length ? bgColors : ['#cbd5e1'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(150, 150, 150, 0.1)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // Render Macro Doughnut Chart
+            if (macroChartInstance) macroChartInstance.destroy();
+            const totalMacroGrams = totals.protein + totals.carbs + totals.fat;
+
+            macroChartInstance = new Chart(doughnutCanvas.getContext('2d'), {
+                type: 'doughnut',
+                plugins: [ChartDataLabels],
+                data: {
+                    labels: ['Protein', 'Carbs', 'Fat'],
+                    datasets: [{
+                        data: [Math.round(totals.protein), Math.round(totals.carbs), Math.round(totals.fat)],
+                        backgroundColor: ['#6366f1', '#10b981', '#f59e0b'],
+                        borderWidth: 2,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        datalabels: {
+                            color: '#ffffff',
+                            font: {
+                                weight: 'bold',
+                                size: 12
+                            },
+                            formatter: (value, ctx) => {
+                                if (totalMacroGrams === 0 || value === 0) return '';
+                                const percentage = ((value / totalMacroGrams) * 100).toFixed(1);
+                                return `${percentage}%`;
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+
+            // Render Micro-Nutrients (% RDI) Chart
+            if (microCanvas) {
+                if (microChartInstance) microChartInstance.destroy();
+
+                const rdiGoals = { calcium: 1000, magnesium: 400, iron: 18, vitC: 90, vitD: 600 };
+                const microPct = [
+                    Math.min(100, Math.round((totals.calcium / rdiGoals.calcium) * 100)),
+                    Math.min(100, Math.round((totals.magnesium / rdiGoals.magnesium) * 100)),
+                    Math.min(100, Math.round((totals.iron / rdiGoals.iron) * 100)),
+                    Math.min(100, Math.round((totals.vitC / rdiGoals.vitC) * 100)),
+                    Math.min(100, Math.round((totals.vitD / rdiGoals.vitD) * 100))
+                ];
+
+                microChartInstance = new Chart(microCanvas.getContext('2d'), {
+                    type: 'bar',
+                    plugins: [ChartDataLabels],
+                    data: {
+                        labels: ['Calcium', 'Magnesium', 'Iron', 'Vitamin C', 'Vitamin D'],
+                        datasets: [{
+                            label: '% of Daily Target',
+                            data: microPct,
+                            backgroundColor: ['#38bdf8', '#14b8a6', '#f43f5e', '#f59e0b', '#6366f1'],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            datalabels: {
+                                anchor: 'end',
+                                align: 'end',
+                                color: '#64748b',
+                                font: { weight: 'bold', size: 11 },
+                                formatter: (val) => `${val}%`
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, max: 120, grid: { color: 'rgba(150, 150, 150, 0.1)' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+        }
+
+        // --- DASHBOARD UPDATES ---
+        function updateDashboard() {
+            let totals = mealsLog.reduce((acc, meal) => {
+                acc.calories += meal.calories || 0;
+                acc.protein += meal.protein || 0;
+                acc.carbs += meal.carbs || 0;
+                acc.fat += meal.fat || 0;
+                return acc;
+            }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+            const calEl = document.getElementById('dash-cal');
+            const protEl = document.getElementById('dash-protein');
+            const carbEl = document.getElementById('dash-carbs');
+            const fatEl = document.getElementById('dash-fat');
+
+            if (calEl) calEl.textContent = Math.round(totals.calories);
+            if (protEl) protEl.textContent = Math.round(totals.protein);
+            if (carbEl) carbEl.textContent = Math.round(totals.carbs);
+            if (fatEl) fatEl.textContent = Math.round(totals.fat);
+
+            const barCal = document.getElementById('bar-cal');
+            const barProt = document.getElementById('bar-protein');
+            const barCarb = document.getElementById('bar-carbs');
+            const barFat = document.getElementById('bar-fat');
+
+            if (barCal) barCal.style.width = `${Math.min(100, (totals.calories / dailyTargets.calories) * 100)}%`;
+            if (barProt) barProt.style.width = `${Math.min(100, (totals.protein / dailyTargets.protein) * 100)}%`;
+            if (barCarb) barCarb.style.width = `${Math.min(100, (totals.carbs / dailyTargets.carbs) * 100)}%`;
+            if (barFat) barFat.style.width = `${Math.min(100, (totals.fat / dailyTargets.fat) * 100)}%`;
+
+            renderRecentMeals();
+            renderFullMealTable();
+        }
+
+        function renderRecentMeals() {
+            const container = document.getElementById('dashboardRecentMeals');
+            if (!container) return;
+            if (mealsLog.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-400 text-sm">No meals logged today yet.</div>`;
+                return;
+            }
+
+            const recent = [...mealsLog].reverse().slice(0, 4);
+            container.innerHTML = recent.map(meal => `
+                <div class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-lg bg-brand-100 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-xs">
+                            ${meal.type.charAt(0)}
+                        </div>
+                        <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider" data-i18n="select_meal_type">Select Meal Type</label>
+                        <select id="aiMealType" class="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="Breakfast">Breakfast / সকালের নাস্তা</option>
+                            <option value="Lunch" selected>Lunch / দুপুরের খাবার</option>
+                            <option value="Dinner">Dinner / রাতের খাবার</option>
+                            <option value="Snacks">Snack / হালকা নাস্তা</option>
+                        </select>
+                    </div>
+
+                    <button id="runAiAnalysisBtn" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md shadow-brand-500/20 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-sparkles"></i>
+                        <span data-i18n="analyze_with_gemini">Analyze Nutrition</span>
+                    </button>
+                </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-slate-900 dark:text-white text-sm">${Math.round(meal.calories)} kcal</div>
+                        <div class="text-[10px] text-slate-400">P:${Math.round(meal.protein)}g C:${Math.round(meal.carbs)}g F:${Math.round(meal.fat)}g</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderFullMealTable() {
+            const tbody = document.getElementById('fullMealTableBody');
+            if (!tbody) return;
+            
+            if (mealsLog.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 text-sm">No meals logged yet.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = [...mealsLog].reverse().map((meal, idx) => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                    <td class="py-3 px-3 font-semibold text-brand-600 dark:text-brand-400">${meal.type}</td>
+                    <td class="py-3 px-3 font-medium text-slate-800 dark:text-slate-200">${currentLang === 'bn' ? (meal.nameBn || meal.name) : meal.name}</td>
+                    <td class="py-3 px-3 font-bold text-slate-900 dark:text-white">${Math.round(meal.calories)} kcal</td>
+                    <td class="py-3 px-3 text-slate-600 dark:text-slate-300">${Math.round(meal.protein)}g</td>
+                    <td class="py-3 px-3 text-slate-600 dark:text-slate-300">${Math.round(meal.carbs)}g</td>
+                    <td class="py-3 px-3 text-slate-600 dark:text-slate-300">${Math.round(meal.fat)}g</td>
+                    <td class="py-3 px-3 text-right text-xs text-slate-400">${meal.time}</td>
+                </tr>
+            `).join('');
+        }
+
+        // --- FOOD DATABASE GRID RENDER ---
+        function renderFoodGrid(foods) {
+            const grid = document.getElementById('foodGrid');
+            if (!grid) return;
+            grid.innerHTML = foods.map(food => `
+                <div onclick="openPortionModal(${food.id})" class="bg-slate-50 dark:bg-slate-900/50 hover:border-brand-500 border border-slate-200 dark:border-slate-700 rounded-xl p-4 cursor-pointer transition-all hover:shadow-md group">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-brand-100 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center text-sm">
+                            <i class="fa-solid ${food.icon}"></i>
+                        </div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">${food.category}</span>
+                    </div>
+                    <h4 class="font-bold text-slate-900 dark:text-white text-base group-hover:text-brand-600 transition-colors">${currentLang === 'bn' ? food.nameBn : food.nameEn}</h4>
+                    <p class="text-xs text-slate-400 mb-3">${food.unit}</p>
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700/60 text-xs font-semibold">
+                        <span class="text-orange-500">${food.calories} kcal</span>
+                        <span class="text-slate-400">P:${food.protein}g • C:${food.carbs}g • F:${food.fat}g</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- PORTION MODAL ---
+        function openPortionModal(foodId) {
+            selectedFoodForModal = bdFoodDatabase.find(f => f.id === foodId);
+            if (!selectedFoodForModal) return;
+
+            document.getElementById('modalFoodTitle').textContent = currentLang === 'bn' ? selectedFoodForModal.nameBn : selectedFoodForModal.nameEn;
+            document.getElementById('modalFoodCategory').textContent = selectedFoodForModal.category;
+            document.getElementById('modalUnitName').textContent = selectedFoodForModal.unit;
+            document.getElementById('modalPortionQty').value = 1;
+
+            updateModalCalculations();
+            document.getElementById('portionModal').classList.remove('hidden');
+        }
+
+        function closePortionModal() {
+            const modal = document.getElementById('portionModal');
+            if (modal) modal.classList.add('hidden');
+            selectedFoodForModal = null;
+        }
+
+        function updateModalCalculations() {
+            if (!selectedFoodForModal) return;
+            const qty = parseFloat(document.getElementById('modalPortionQty').value) || 1;
+            
+            document.getElementById('modalCal').textContent = Math.round(selectedFoodForModal.calories * qty);
+            document.getElementById('modalProt').textContent = `${Math.round(selectedFoodForModal.protein * qty)}g`;
+            document.getElementById('modalCarb').textContent = `${Math.round(selectedFoodForModal.carbs * qty)}g`;
+            document.getElementById('modalFat').textContent = `${Math.round(selectedFoodForModal.fat * qty)}g`;
+        }
+
+        // --- LIVE CAMERA CONTROLS ---
+        async function startCameraStream() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: currentFacingMode } },
+                    audio: false
+                });
+                const video = document.getElementById('cameraVideo');
+                if (video) video.srcObject = mediaStream;
+                const modal = document.getElementById('cameraModal');
+                if (modal) modal.classList.remove('hidden');
+            } catch (err) {
+                console.error("Camera access error:", err);
+                alert("Unable to access camera. Please allow camera permissions or upload an image file instead.");
+            }
+        }
+
+        function stopCameraStream() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            const modal = document.getElementById('cameraModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        // --- AI DIETITIAN CHATBOT ---
+        async function sendDietitianMessage() {
+            const input = document.getElementById('dietitianInput');
+            if (!input) return;
+            const userMsg = input.value.trim();
+            if (!userMsg) return;
+
+            const chatContainer = document.getElementById('chatContainer');
+            if (!chatContainer) return;
+            
+            chatContainer.innerHTML += `
+                <div class="flex items-start justify-end space-x-3">
+                    <div class="bg-brand-600 text-white p-3.5 rounded-2xl rounded-tr-none max-w-lg text-sm leading-relaxed">
+                        ${userMsg}
+                    </div>
+                </div>
+            `;
+            input.value = '';
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            const loadingId = 'loading-' + Date.now();
+            chatContainer.innerHTML += `
+                <div id="${loadingId}" class="flex items-start space-x-3">
+                    <div class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0">AI</div>
+                    <div class="bg-slate-100 dark:bg-slate-700/60 text-slate-400 p-3 rounded-xl text-xs flex items-center space-x-2">
+                        <i class="fa-solid fa-spinner animate-spin"></i>
+                        <span>Thinking...</span>
+                    </div>
+                </div>
+            `;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            try {
+                const systemPrompt = "You are a professional Bangladeshi dietitian. Provide empathetic, scientifically sound nutrition advice tailored to Bangladeshi traditional diets (rice, lentils, mustard oil, freshwater fish, beef). Respond concisely in the language used by the user (Bangla or English).";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: userMsg }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    })
+                });
+
+                const result = await response.json();
+                const aiReply = result.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't process that request. Please try again.";
+
+                const loadingElem = document.getElementById(loadingId);
+                if (loadingElem) loadingElem.remove();
+
+                chatContainer.innerHTML += `
+                    <div class="flex items-start space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0">AI</div>
+                        <div class="bg-slate-100 dark:bg-slate-700/60 text-slate-800 dark:text-slate-200 p-3.5 rounded-2xl rounded-tl-none max-w-lg text-sm leading-relaxed">
+                            ${aiReply}
+                        </div>
+                    </div>
+                `;
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            } catch (err) {
+                console.error(err);
+                const loadingElem = document.getElementById(loadingId);
+                if (loadingElem) loadingElem.remove();
+            }
+        }
+
+        function clearAllMeals() {
+            if (confirm("Are you sure you want to clear today's meal logs?")) {
+                mealsLog = [];
+                localStorage.removeItem('foodlens_bd_meals');
+                updateDashboard();
+            }
+        }
+
+        function resetDailyData() {
+            clearAllMeals();
+        }
+
+        // --- EVENT LISTENERS INITIALIZATION ---
+        function setupEventListeners() {
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+            });
+
+            const searchInput = document.getElementById('foodSearchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.toLowerCase();
+                    const filtered = bdFoodDatabase.filter(item => 
+                        item.nameEn.toLowerCase().includes(query) || 
+                        item.nameBn.includes(query) ||
+                        item.category.toLowerCase().includes(query)
+                    );
+                    renderFoodGrid(filtered);
+                });
+            }
+
+            const menuToggle = document.getElementById('menuToggle');
+            if (menuToggle) {
+                menuToggle.addEventListener('click', () => {
+                    document.getElementById('sidebar').classList.toggle('-translate-x-full');
+                });
+            }
+
+            const themeBtn = document.getElementById('themeToggle');
+            if (themeBtn) {
+                themeBtn.addEventListener('click', () => {
+                    document.documentElement.classList.toggle('dark');
+                });
+            }
+
+            const langBtns = [document.getElementById('langToggle'), document.getElementById('langToggleMobile')];
+            langBtns.forEach(btn => {
+                if (btn) {
+                    btn.addEventListener('click', () => {
+                        currentLang = currentLang === 'en' ? 'bn' : 'en';
+                        updateLanguage();
+                    });
+                }
+            });
+
+            const modalQty = document.getElementById('modalPortionQty');
+            if (modalQty) modalQty.addEventListener('input', updateModalCalculations);
+
+            const confirmBtn = document.getElementById('confirmLogBtn');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', () => {
+                    if (!selectedFoodForModal) return;
+                    const qty = parseFloat(document.getElementById('modalPortionQty').value) || 1;
+                    const mealType = document.getElementById('modalMealType').value;
+
+                    const newMeal = {
+                        name: selectedFoodForModal.nameEn,
+                        nameBn: selectedFoodForModal.nameBn,
+                        type: mealType,
+                        calories: selectedFoodForModal.calories * qty,
+                        protein: selectedFoodForModal.protein * qty,
+                        carbs: selectedFoodForModal.carbs * qty,
+                        fat: selectedFoodForModal.fat * qty,
+                        portion: `${qty} x ${selectedFoodForModal.unit}`,
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    };
+
+                    mealsLog.push(newMeal);
+                    localStorage.setItem('foodlens_bd_meals', JSON.stringify(mealsLog));
+                    updateDashboard();
+                    closePortionModal();
+                    switchTab('dashboard');
+                });
+            }
+
+            // Image Upload Event Listeners
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('imageFileInput');
+            const imagePreview = document.getElementById('imagePreview');
+            const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+            const triggerUploadBtn = document.getElementById('triggerUploadBtn');
+
+            if (dropZone && fileInput) dropZone.addEventListener('click', () => fileInput.click());
+            if (triggerUploadBtn && fileInput) {
+                triggerUploadBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    fileInput.click();
+                });
+            }
+
+            if (fileInput) {
+                fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            selectedImageBase64 = evt.target.result.split(',')[1];
+                            if (imagePreview) {
+                                imagePreview.src = evt.target.result;
+                                imagePreview.classList.remove('hidden');
+                            }
+                            if (uploadPlaceholder) uploadPlaceholder.classList.add('hidden');
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+
+            // Camera Buttons
+            const openCamBtn = document.getElementById('openCameraBtn');
+            if (openCamBtn) openCamBtn.addEventListener('click', (e) => { e.stopPropagation(); startCameraStream(); });
+
+            const closeCamBtn = document.getElementById('closeCameraBtn');
+            if (closeCamBtn) closeCamBtn.addEventListener('click', stopCameraStream);
+
+            const switchCamBtn = document.getElementById('switchCameraBtn');
+            if (switchCamBtn) switchCamBtn.addEventListener('click', () => {
+                currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+                startCameraStream();
+            });
+
+            const captureBtn = document.getElementById('captureSnapshotBtn');
+            if (captureBtn) {
+                captureBtn.addEventListener('click', () => {
+                    const video = document.getElementById('cameraVideo');
+                    const canvas = document.getElementById('snapshotCanvas');
+                    if (!video || !video.videoWidth || !canvas) return;
+
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                    selectedImageBase64 = dataUrl.split(',')[1];
+
+                    if (imagePreview) {
+                        imagePreview.src = dataUrl;
+                        imagePreview.classList.remove('hidden');
+                    }
+                    if (uploadPlaceholder) uploadPlaceholder.classList.add('hidden');
+
+                    stopCameraStream();
+                });
+            }
+
+            // Mode Switching
+            const photoBtn = document.getElementById('modePhotoBtn');
+            const textBtn = document.getElementById('modeTextBtn');
+            if (photoBtn) {
+                photoBtn.addEventListener('click', function() {
+                    document.getElementById('photoInputBox').classList.remove('hidden');
+                    document.getElementById('textInputBox').classList.add('hidden');
+                    this.classList.add('border-brand-600', 'text-brand-600', 'dark:text-brand-400');
+                    if (textBtn) textBtn.classList.remove('border-brand-600', 'text-brand-600', 'dark:text-brand-400');
+                });
+            }
+            if (textBtn) {
+                textBtn.addEventListener('click', function() {
+                    document.getElementById('textInputBox').classList.remove('hidden');
+                    document.getElementById('photoInputBox').classList.add('hidden');
+                    this.classList.add('border-brand-600', 'text-brand-600', 'dark:text-brand-400');
+                    if (photoBtn) photoBtn.classList.remove('border-brand-600', 'text-brand-600', 'dark:text-brand-400');
+                });
+            }
+
+            // AI Analysis Trigger
+            const aiRunBtn = document.getElementById('runAiAnalysisBtn');
+            if (aiRunBtn) {
+                aiRunBtn.addEventListener('click', async () => {
+                    const isTextMode = !document.getElementById('textInputBox').classList.contains('hidden');
+                    const textInputEl = document.getElementById('aiTextPrompt');
+                    const promptText = textInputEl ? textInputEl.value : '';
+
+                    if (isTextMode && !promptText.trim()) {
+                        alert("Please type a food description first!");
+                        return;
+                    }
+                    if (!isTextMode && !selectedImageBase64) {
+                        alert("Please upload a food photo first!");
+                        return;
+                    }
+
+                    document.getElementById('aiEmptyState').classList.add('hidden');
+                    document.getElementById('aiResultCard').classList.add('hidden');
+                    document.getElementById('addAiMealBtn').classList.add('hidden');
+                    document.getElementById('aiLoadingState').classList.remove('hidden');
+
+                    // Automatically clear the text box after reading the input
+                    if (isTextMode && textInputEl) {
+                        textInputEl.value = '';
+                    }
+
+                    try {
+                        const systemPrompt = `You are an expert Bangladeshi nutritionist. Analyze the provided food item (either from text prompt or image) and estimate its macronutrient values accurately. Return ONLY a JSON object with this EXACT schema:
+                        {
+                          "dishName": "Name of dish (e.g., Kacchi Biryani)",
+                          "dishNameBn": "বাংলা নাম",
+                          "calories": number,
+                          "protein": number (grams),
+                          "carbs": number (grams),
+                          "fat": number (grams),
+                          "advice": "A short 2-sentence nutritional advice tailored to Bangladeshi dietary habits."
+                        }`;
+
+                        let payloadContents = [];
+                        if (!isTextMode && selectedImageBase64) {
+                            payloadContents = [{
+                                parts: [
+                                    { text: systemPrompt + " Identify this food and estimate its macros for a standard serving size." },
+                                    { inlineData: { mimeType: "image/jpeg", data: selectedImageBase64 } }
+                                ]
+                            }];
+                        } else {
+                            payloadContents = [{
+                                parts: [{ text: systemPrompt + ` Analyze this food description: "${promptText}"` }]
+                            }];
+                        }
+
+                        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}`;
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: payloadContents,
+                                generationConfig: { responseMimeType: "application/json" }
+                            })
+                        });
+
+                        const result = await response.json();
+                        const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                        
+                        if (jsonText) {
+                            const parsedData = JSON.parse(jsonText);
+                            activeAiResult = parsedData;
+
+                            document.getElementById('resDishName').textContent = currentLang === 'bn' ? (parsedData.dishNameBn || parsedData.dishName) : parsedData.dishName;
+                            document.getElementById('resCalories').textContent = Math.round(parsedData.calories);
+                            document.getElementById('resProtein').textContent = `${Math.round(parsedData.protein)}g`;
+                            document.getElementById('resCarbs').textContent = `${Math.round(parsedData.carbs)}g`;
+                            document.getElementById('resFat').textContent = `${Math.round(parsedData.fat)}g`;
+                            document.getElementById('resDescription').textContent = parsedData.advice;
+
+                            document.getElementById('aiLoadingState').classList.add('hidden');
+                            document.getElementById('aiResultCard').classList.remove('hidden');
+                            document.getElementById('addAiMealBtn').classList.remove('hidden');
+                        } else {
+                            throw new Error("No response from Gemini");
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        document.getElementById('aiLoadingState').classList.add('hidden');
+                        document.getElementById('aiEmptyState').classList.remove('hidden');
+                        alert("Failed to analyze meal. Please try again or refine your prompt.");
+                    }
+                });
+            }
+
+            const addAiBtn = document.getElementById('addAiMealBtn');
+            if (addAiBtn) {
+                addAiBtn.addEventListener('click', () => {
+                    if (!activeAiResult) return;
+                    const mealType = document.getElementById('aiMealType').value;
+
+                    const newMeal = {
+                        name: activeAiResult.dishName,
+                        nameBn: activeAiResult.dishNameBn || activeAiResult.dishName,
+                        type: mealType,
+                        calories: activeAiResult.calories,
+                        protein: activeAiResult.protein,
+                        carbs: activeAiResult.carbs,
+                        fat: activeAiResult.fat,
+                        portion: 'AI Analyzed Serving',
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    };
+
+                    mealsLog.push(newMeal);
+                    localStorage.setItem('foodlens_bd_meals', JSON.stringify(mealsLog));
+                    updateDashboard();
+                    switchTab('dashboard');
+                });
+            }
+
+            const sendChatBtn = document.getElementById('sendDietitianMsg');
+            if (sendChatBtn) sendChatBtn.addEventListener('click', sendDietitianMessage);
+
+            const dietitianInput = document.getElementById('dietitianInput');
+            if (dietitianInput) {
+                dietitianInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') sendDietitianMessage();
+                });
+            }
+        }
+
+        function updateLanguage() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                if (i18n[currentLang][key]) {
+                    el.textContent = i18n[currentLang][key];
+                }
+            });
+            const toggleBtn = document.getElementById('langToggle');
+            if (toggleBtn) toggleBtn.textContent = currentLang === 'en' ? 'বাংলা' : 'English';
+            renderFoodGrid(bdFoodDatabase);
+            updateDashboard();
+        }
+    </script>
+</body>
+</html>
