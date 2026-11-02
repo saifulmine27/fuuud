@@ -634,127 +634,73 @@
                     </div>
                 </div>
                 <canvas id="snapshotCanvas" class="hidden"></canvas>
-                <button id="captureSnapshotBtn" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center space-x-2">
-                    <i class="fa-solid fa-camera"></i>
-                    <span>Capture Photo</span>
-                </button>
             </div>
         </div>
 
     </main>
 
-    <!-- SCRIPT LOGIC -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Firebase Configuration (Client Side Default Configuration)
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : {
-                apiKey: "AIzaSyDummyKeyForGoogleAuthDemo12345",
-                authDomain: "foodlens-bd.firebaseapp.com",
-                projectId: "foodlens-bd",
-                storageBucket: "foodlens-bd.appspot.com",
-                messagingSenderId: "1234567890",
-                appId: "1:1234567890:web:abcdef123456"
-            };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const googleProvider = new GoogleAuthProvider();
-
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'foodlens-bd-app';
-        let currentUser = null;
-
-        // Make Auth trigger global
+    <script>
+        // Global Google Auth Toggle & Fallback Handler
         window.toggleGoogleAuth = async function() {
-            if (currentUser) {
+            if (window.currentUser) {
                 if (confirm("Are you sure you want to sign out? Your offline meals will remain stored locally.")) {
-                    await signOut(auth);
-                }
-            } else {
-                try {
-                    await signInWithPopup(auth, googleProvider);
-                } catch (error) {
-                    console.warn("Google Auth popup issue, logging in anonymously or simulating sync:", error);
-                    alert("Google Sign-In ready! Sign up and device sync requires Firebase domain configuration in production.");
-                }
-            }
-        };
-
-        // Listen for authentication changes
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            const nameEl = document.getElementById('userNameDisplay');
-            const avatarEl = document.getElementById('userAvatar');
-            const syncStatusEl = document.getElementById('userSyncStatus');
-            const authBtn = document.getElementById('googleAuthBtn');
-
-            if (user) {
-                if (nameEl) nameEl.innerText = user.displayName || user.email.split('@')[0];
-                if (avatarEl) {
-                    if (user.photoURL) {
-                        avatarEl.innerHTML = `<img src="${user.photoURL}" class="w-full h-full object-cover">`;
+                    window.currentUser = null;
+                    if (typeof onAuthStateChangedCallback === 'function') {
+                        onAuthStateChangedCallback(null);
                     } else {
-                        avatarEl.innerText = (user.displayName || 'U').charAt(0).toUpperCase();
-                    }
-                }
-                if (syncStatusEl) {
-                    syncStatusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span><span class="text-emerald-600 dark:text-emerald-400 font-medium">Cloud Synced</span>`;
-                }
-                if (authBtn) {
-                    authBtn.innerHTML = `<i class="fa-solid fa-right-from-bracket text-rose-500"></i>`;
-                    authBtn.title = "Sign Out";
-                }
-
-                // Attach real-time cloud listener for user meals sync
-                listenToCloudMeals(user.uid);
-            } else {
-                if (nameEl) nameEl.innerText = "Guest User";
-                if (avatarEl) avatarEl.innerText = "BD";
-                if (syncStatusEl) {
-                    syncStatusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span><span>Local Only</span>`;
-                }
-                if (authBtn) {
-                    authBtn.innerHTML = `<i class="fa-brands fa-google text-base"></i>`;
-                    authBtn.title = "Google Sign In for Device Sync";
-                }
-            }
-        });
-
-        // Save meals to Cloud Firestore on every update
-        window.syncMealsToCloud = async function(meals) {
-            if (!currentUser) return;
-            try {
-                const userDocRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'userdata', 'meals');
-                await setDoc(userDocRef, { meals: meals, updatedAt: new Date().toISOString() });
-            } catch (err) {
-                console.error("Cloud Sync Error:", err);
-            }
-        };
-
-        // Listen to Cloud changes across devices
-        function listenToCloudMeals(userId) {
-            if (!userId) return;
-            const userDocRef = doc(db, 'artifacts', appId, 'users', userId, 'userdata', 'meals');
-            
-            onSnapshot(userDocRef, (snapshot) => {
-                if (snapshot.exists()) {
-                    const data = snapshot.data();
-                    if (data && data.meals) {
-                        window.mealsLog = data.meals;
-                        localStorage.setItem('foodlens_bd_meals', JSON.stringify(window.mealsLog));
-                        if (typeof window.updateDashboardUI === 'function') {
-                            window.updateDashboardUI();
+                        const nameEl = document.getElementById('userNameDisplay');
+                        const avatarEl = document.getElementById('userAvatar');
+                        const syncStatusEl = document.getElementById('userSyncStatus');
+                        const authBtn = document.getElementById('googleAuthBtn');
+                        if (nameEl) nameEl.innerText = "Guest User";
+                        if (avatarEl) avatarEl.innerText = "BD";
+                        if (syncStatusEl) {
+                            syncStatusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span><span>Local Only</span>`;
+                        }
+                        if (authBtn) {
+                            authBtn.innerHTML = `<i class="fa-brands fa-google text-base"></i>`;
+                            authBtn.title = "Google Sign In for Device Sync";
                         }
                     }
                 }
-            }, (error) => {
-                console.warn("Firestore sync snapshot warning:", error);
-            });
+            } else {
+                showFirebaseConfigGuideModal();
+            }
+        };
+
+        // Custom Modal UI instead of Browser Alert for Firebase Configuration
+        function showFirebaseConfigGuideModal() {
+            let modal = document.getElementById('firebaseGuideModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'firebaseGuideModal';
+                modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4';
+                modal.innerHTML = `
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 dark:border-slate-700">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center space-x-2 text-brand-600 dark:text-brand-400 font-bold">
+                                <i class="fa-brands fa-google text-lg"></i>
+                                <span>Enable Real Google Sign-In</span>
+                            </div>
+                            <button onclick="document.getElementById('firebaseGuideModal').remove()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                <i class="fa-solid fa-xmark text-lg"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                            GitHub Pages (<span class="font-mono text-brand-600">saifulmine27.github.io</span>)-এ সরাসরি গুগল সাইন-ইন সচল করতে নিচের ধাপগুলো অনুসরণ করুন:
+                        </p>
+                        <ol class="text-xs text-slate-600 dark:text-slate-300 space-y-2 list-decimal list-inside bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl">
+                            <li><strong>Firebase Console</strong>-এ প্রবেশ করুন।</li>
+                            <li><strong>Authentication &gt; Settings &gt; Authorized domains</strong>-এ গিয়ে <code class="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded text-brand-600">saifulmine27.github.io</code> যোগ করুন।</li>
+                            <li>আপনার প্রজেক্টের আসল <strong>Firebase Config</strong> কোডের <code class="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded">firebaseConfig</code> অবজেক্টে বসিয়ে দিন।</li>
+                        </ol>
+                        <button onclick="document.getElementById('firebaseGuideModal').remove()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs rounded-xl transition-all">
+                            ঠিক আছে (Got it)
+                        </button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
         }
     </script>
 
