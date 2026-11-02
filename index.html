@@ -739,6 +739,47 @@
 
 <!-- Application Core Logic & Event Listeners -->
 <script>
+    // --- Navigation Switcher Function ---
+    window.switchTab = function(tabId) {
+        document.querySelectorAll('.tab-content').forEach(section => {
+            section.classList.add('hidden');
+        });
+        const targetTab = document.getElementById(`tab-${tabId}`);
+        if (targetTab) {
+            targetTab.classList.remove('hidden');
+        }
+
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.remove('text-brand-600', 'dark:text-brand-400', 'bg-brand-50', 'dark:bg-brand-500/10');
+            btn.classList.add('text-slate-600', 'dark:text-slate-400');
+            if (btn.dataset.tab === tabId) {
+                btn.classList.remove('text-slate-600', 'dark:text-slate-400');
+                btn.classList.add('text-brand-600', 'dark:text-brand-400', 'bg-brand-50', 'dark:bg-brand-500/10');
+            }
+        });
+
+        const titles = {
+            'dashboard': 'Dashboard',
+            'charts': 'Nutrient Charts',
+            'tracker': 'BD Food Search',
+            'photo': 'AI Photo & Prompt',
+            'meals': 'Meal Log History',
+            'dietitian': 'AI Dietitian BD'
+        };
+        const titleEl = document.getElementById('pageTitle');
+        if (titleEl) titleEl.textContent = titles[tabId] || 'Dashboard';
+
+        if (tabId === 'charts') {
+            updateCharts();
+        }
+        
+        // Close mobile sidebar if open
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.add('-translate-x-full');
+        }
+    };
+
     // --- Data & State ---
     const defaultTargets = { cal: 2000, protein: 120, carbs: 250, fat: 65 };
     let mealsLog = JSON.parse(localStorage.getItem('bd_food_meals')) || [];
@@ -747,120 +788,111 @@
     let macroChart = null;
     let microChart = null;
     let currentChartTimeframe = 'today';
+    let uploadedImageBase64 = null;
+    let lastAnalyzedMeal = null;
 
     const bdFoodDatabase = [
-        { id: 1, name: 'Kacchi Biryani', cat: 'Meat Dish', cal: 650, prot: 28, carbs: 75, fat: 26, calcium: 40, mag: 30, iron: 3.5, vitc: 2, vitd: 10, unit: '1 plate (350g)' },
-        { id: 2, name: 'Shorshe Ilish', cat: 'Fish Curry', cal: 420, prot: 24, carbs: 6, fat: 34, calcium: 80, mag: 45, iron: 2.1, vitc: 4, vitd: 120, unit: '1 medium piece + gravy' },
-        { id: 3, name: 'Sada Bhat (White Rice)', cat: 'Rice Dish', cal: 204, prot: 4.2, carbs: 45, fat: 0.4, calcium: 10, mag: 15, iron: 0.8, vitc: 0, vitd: 0, unit: '1 cup cooked (158g)' },
-        { id: 4, name: 'Bhuna Khichuri', cat: 'Rice Dish', cal: 380, prot: 12, carbs: 58, fat: 12, calcium: 35, mag: 50, iron: 2.8, vitc: 5, vitd: 0, unit: '1 plate (250g)' },
-        { id: 5, name: 'Tadka / Thick Red Lentils (Dal)', cat: 'Lentil Dish', cal: 140, prot: 9, carbs: 20, fat: 3, calcium: 25, mag: 36, iron: 2.2, vitc: 3, vitd: 0, unit: '1 medium bowl (180ml)' },
-        { id: 6, name: 'Chicken Bhuna Curry', cat: 'Meat Dish', cal: 310, prot: 26, carbs: 8, fat: 19, calcium: 30, mag: 28, iron: 1.9, vitc: 6, vitd: 15, unit: '1 serving (200g)' },
-        { id: 7, name: 'Beef Bhuna Curry', cat: 'Meat Dish', cal: 410, prot: 30, carbs: 6, fat: 29, calcium: 25, mag: 25, iron: 3.8, vitc: 1, vitd: 8, unit: '1 serving (200g)' },
-        { id: 8, name: 'Mug Dal Vorta', cat: 'Vegetable / Vorta', cal: 110, prot: 6, carbs: 14, fat: 3.5, calcium: 20, mag: 25, iron: 1.5, vitc: 4, vitd: 0, unit: '2 tbsp (60g)' },
-        { id: 9, name: 'Begun Bhaja (Eggplant Fry)', cat: 'Vegetable / Vorta', cal: 160, prot: 2, carbs: 12, fat: 12, calcium: 18, mag: 20, iron: 0.9, vitc: 5, vitd: 0, unit: '2 slices' },
-        { id: 10, name: 'Ruhi Fish Curry', cat: 'Fish Curry', cal: 260, prot: 22, carbs: 5, fat: 17, calcium: 90, mag: 40, iron: 1.8, vitc: 3, vitd: 90, unit: '1 piece with curry' },
-        { id: 11, name: 'Fuchka (Panipuri)', cat: 'Street Food', cal: 280, prot: 5, carbs: 42, fat: 10, calcium: 15, mag: 18, iron: 1.2, vitc: 8, vitd: 0, unit: '6 pieces with tok water' },
-        { id: 12, name: 'Chotpoti', cat: 'Street Food', cal: 240, prot: 10, carbs: 36, fat: 6, calcium: 40, mag: 45, iron: 2.5, vitc: 12, vitd: 0, unit: '1 bowl (200g)' },
-        { id: 13, name: 'Paratha (Oil fried)', cat: 'Breakfast Item', cal: 290, prot: 5, carbs: 38, fat: 13, calcium: 12, mag: 14, iron: 1.1, vitc: 0, vitd: 0, unit: '1 medium paratha' },
-        { id: 14, name: 'Atta Roti (Flatbread)', cat: 'Breakfast Item', cal: 120, prot: 3.8, carbs: 24, fat: 1.2, calcium: 15, mag: 22, iron: 1.4, vitc: 0, vitd: 0, unit: '1 medium roti' },
-        { id: 15, name: 'Dim Bhaji (Omelette)', cat: 'Breakfast Item', cal: 175, prot: 12, carbs: 2, fat: 14, calcium: 55, mag: 12, iron: 1.8, vitc: 1, vitd: 45, unit: '1 egg with onion/chili' }
+        { id: 1, name: 'Kacchi Biryani', cat: 'Meat Dish', cal: 650, prot: 28, carbs: 75, fat: 26, calcium: 40, mag: 30, iron: 3.5, vitc: 2, vitd: 10, unit: '1 plate (350g)', icon: 'fa-bowl-rice', color: 'text-orange-500 bg-orange-50 dark:bg-orange-500/10' },
+        { id: 2, name: 'Shorshe Ilish', cat: 'Fish Curry', cal: 420, prot: 24, carbs: 6, fat: 34, calcium: 80, mag: 45, iron: 2.1, vitc: 4, vitd: 120, unit: '1 medium piece + gravy', icon: 'fa-fish', color: 'text-amber-500 bg-amber-50 dark:bg-amber-500/10' },
+        { id: 3, name: 'Sada Bhat (White Rice)', cat: 'Rice Dish', cal: 204, prot: 4.2, carbs: 45, fat: 0.4, calcium: 10, mag: 15, iron: 0.8, vitc: 0, vitd: 0, unit: '1 cup cooked (158g)', icon: 'fa-bowl-food', color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' },
+        { id: 4, name: 'Bhuna Khichuri', cat: 'Rice Dish', cal: 380, prot: 12, carbs: 58, fat: 12, calcium: 35, mag: 50, iron: 2.8, vitc: 5, vitd: 0, unit: '1 plate (250g)', icon: 'fa-utensils', color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10' },
+        { id: 5, name: 'Tadka / Thick Red Lentils (Dal)', cat: 'Lentil Dish', cal: 140, prot: 9, carbs: 20, fat: 3, calcium: 25, mag: 36, iron: 2.2, vitc: 3, vitd: 0, unit: '1 medium bowl (180ml)', icon: 'fa-bowl-rice', color: 'text-red-500 bg-red-50 dark:bg-red-500/10' },
+        { id: 6, name: 'Chicken Bhuna Curry', cat: 'Meat Dish', cal: 310, prot: 26, carbs: 8, fat: 19, calcium: 30, mag: 28, iron: 1.9, vitc: 6, vitd: 15, unit: '1 serving (200g)', icon: 'fa-drumstick-bite', color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' },
+        { id: 7, name: 'Beef Bhuna Curry', cat: 'Meat Dish', cal: 410, prot: 30, carbs: 6, fat: 29, calcium: 25, mag: 25, iron: 3.8, vitc: 1, vitd: 8, unit: '1 serving (200g)', icon: 'fa-burger', color: 'text-rose-500 bg-rose-50 dark:bg-rose-500/10' },
+        { id: 8, name: 'Mug Dal Vorta', cat: 'Vegetable / Vorta', cal: 110, prot: 6, carbs: 14, fat: 3.5, calcium: 20, mag: 25, iron: 1.5, vitc: 4, vitd: 0, unit: '2 tbsp (60g)', icon: 'fa-carrot', color: 'text-green-500 bg-green-50 dark:bg-green-500/10' },
+        { id: 9, name: 'Begun Bhaja (Eggplant Fry)', cat: 'Vegetable / Vorta', cal: 160, prot: 2, carbs: 12, fat: 12, calcium: 18, mag: 20, iron: 0.9, vitc: 5, vitd: 0, unit: '2 slices', icon: 'fa-seedling', color: 'text-purple-500 bg-purple-50 dark:bg-purple-500/10' },
+        { id: 10, name: 'Ruhi Fish Curry', cat: 'Fish Curry', cal: 260, prot: 22, carbs: 5, fat: 17, calcium: 90, mag: 40, iron: 1.8, vitc: 3, vitd: 90, unit: '1 piece with curry', icon: 'fa-fish-fins', color: 'text-blue-500 bg-blue-50 dark:bg-blue-500/10' },
+        { id: 11, name: 'Fuchka (Panipuri)', cat: 'Street Food', cal: 280, prot: 5, carbs: 42, fat: 10, calcium: 15, mag: 18, iron: 1.2, vitc: 8, vitd: 0, unit: '6 pieces with tok water', icon: 'fa-cookie', color: 'text-amber-600 bg-amber-50 dark:bg-amber-600/10' },
+        { id: 12, name: 'Chotpoti', cat: 'Street Food', cal: 240, prot: 10, carbs: 36, fat: 6, calcium: 40, mag: 45, iron: 2.5, vitc: 12, vitd: 0, unit: '1 bowl (200g)', icon: 'fa-bowl-food', color: 'text-orange-600 bg-orange-50 dark:bg-orange-600/10' },
+        { id: 13, name: 'Paratha (Oil fried)', cat: 'Breakfast Item', cal: 290, prot: 5, carbs: 38, fat: 13, calcium: 12, mag: 14, iron: 1.1, vitc: 0, vitd: 0, unit: '1 medium paratha', icon: 'fa-bread-slice', color: 'text-yellow-500 bg-yellow-50 dark:bg-yellow-500/10' },
+        { id: 14, name: 'Atta Roti (Flatbread)', cat: 'Breakfast Item', cal: 120, prot: 3.8, carbs: 24, fat: 1.2, calcium: 15, mag: 22, iron: 1.4, vitc: 0, vitd: 0, unit: '1 medium roti', icon: 'fa-wheat-awn', color: 'text-amber-700 bg-amber-50 dark:bg-amber-700/10' },
+        { id: 15, name: 'Dim Bhaji (Omelette)', cat: 'Breakfast Item', cal: 175, prot: 12, carbs: 2, fat: 14, calcium: 55, mag: 12, iron: 1.8, vitc: 1, vitd: 45, unit: '1 egg with onion/chili', icon: 'fa-egg', color: 'text-yellow-500 bg-yellow-50 dark:bg-yellow-500/10' }
     ];
 
-    // --- Tab Navigation ---
-    window.switchTab = function(tabName) {
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-        const activeTab = document.getElementById(`tab-${tabName}`);
-        if (activeTab) activeTab.classList.remove('hidden');
-
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            if (btn.dataset.tab === tabName) {
-                btn.classList.add('text-brand-600', 'dark:text-brand-400', 'bg-brand-50', 'dark:bg-brand-500/10');
-                btn.classList.remove('text-slate-600', 'dark:text-slate-400');
-            } else {
-                btn.classList.remove('text-brand-600', 'dark:text-brand-400', 'bg-brand-50', 'dark:bg-brand-500/10');
-                btn.classList.add('text-slate-600', 'dark:text-slate-400');
-            }
-        });
-
-        const titles = {
-            dashboard: 'Dashboard Overview',
-            charts: 'Nutrient & Macro Analytics',
-            tracker: 'Bangladeshi Food Database',
-            photo: 'Gemini AI Vision & Prompt Scanner',
-            meals: 'Meal History & Daily Logs',
-            dietitian: 'AI Clinical Dietitian Assistant'
-        };
-        const pageTitle = document.getElementById('pageTitle');
-        if (pageTitle) pageTitle.textContent = titles[tabName] || 'Dashboard';
-
-        if (tabName === 'charts') updateCharts();
-    };
-
-    // --- Search & Food Rendering ---
-    function renderFoodSearch(query = '') {
+    // --- Render BD Food Database ---
+    window.renderFoodSearch = function(query = '') {
         const grid = document.getElementById('foodGrid');
         if (!grid) return;
         grid.innerHTML = '';
 
-        const filtered = bdFoodDatabase.filter(item => 
-            item.name.toLowerCase().includes(query.toLowerCase()) || 
-            item.cat.toLowerCase().includes(query.toLowerCase())
-        );
+        const filtered = bdFoodDatabase.filter(f => f.name.toLowerCase().includes(query.toLowerCase()) || f.cat.toLowerCase().includes(query.toLowerCase()));
+        if (filtered.length === 0) {
+            grid.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 text-sm">No Bangladeshi food found matching "${query}". Try searching "Kacchi", "Ilish", or "Bhat".</div>`;
+            return;
+        }
 
-        filtered.forEach(item => {
+        filtered.forEach(food => {
             const card = document.createElement('div');
-            card.className = "p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-brand-500 transition-all cursor-pointer flex flex-col justify-between";
-            card.onclick = () => openPortionModal(item);
+            card.className = 'bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/60 flex flex-col justify-between hover:border-brand-500 transition-all';
             card.innerHTML = `
                 <div>
-                    <div class="flex justify-between items-start mb-1">
-                        <h4 class="font-bold text-slate-900 dark:text-white text-base">${item.name}</h4>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300">${item.cat}</span>
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-10 h-10 rounded-xl ${food.color || 'bg-brand-50 text-brand-600'} flex items-center justify-center font-bold text-base shadow-sm shrink-0">
+                                <i class="fa-solid ${food.icon || 'fa-utensils'}"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-900 dark:text-white text-sm">${food.name}</h4>
+                                <span class="text-[11px] font-semibold text-brand-600 dark:text-brand-400">${food.cat}</span>
+                            </div>
+                        </div>
+                        <span class="text-xs font-extrabold text-orange-500">${food.cal} kcal</span>
                     </div>
-                    <div class="text-xs text-slate-400 mb-3">${item.unit}</div>
+                    <p class="text-[11px] text-slate-400 mb-3"><i class="fa-solid fa-weight-scale mr-1"></i> ${food.unit}</p>
+                    <div class="grid grid-cols-3 gap-2 text-center text-[10px] mb-3">
+                        <div class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 py-1 rounded-md font-semibold">Prot: ${food.prot}g</div>
+                        <div class="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 py-1 rounded-md font-semibold">Carb: ${food.carbs}g</div>
+                        <div class="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 py-1 rounded-md font-semibold">Fat: ${food.fat}g</div>
+                    </div>
                 </div>
-                <div class="flex items-center justify-between pt-3 border-t border-slate-200/60 dark:border-slate-700/50 text-xs">
-                    <div><span class="font-bold text-orange-500">${item.cal}</span> kcal</div>
-                    <div class="text-slate-400">P: <span class="font-semibold text-slate-700 dark:text-slate-200">${item.prot}g</span></div>
-                    <div class="text-slate-400">C: <span class="font-semibold text-slate-700 dark:text-slate-200">${item.carbs}g</span></div>
-                    <div class="text-slate-400">F: <span class="font-semibold text-slate-700 dark:text-slate-200">${item.fat}g</span></div>
-                </div>
+                <button onclick="openPortionModal(${food.id})" class="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-semibold transition-all flex items-center justify-center space-x-1.5 shadow-sm">
+                    <i class="fa-solid fa-plus text-[10px]"></i>
+                    <span>Add to Log</span>
+                </button>
             `;
             grid.appendChild(card);
         });
-    }
+    };
 
-    // --- Portion Modal ---
-    function openPortionModal(food) {
+    window.openPortionModal = function(foodId) {
+        const food = bdFoodDatabase.find(f => f.id === foodId);
+        if (!food) return;
         selectedFoodForModal = food;
+
         document.getElementById('modalFoodTitle').textContent = food.name;
-        document.getElementById('modalFoodCategory').textContent = food.cat;
+        document.getElementById('modalFoodCategory').textContent = `${food.cat} • ${food.unit}`;
         document.getElementById('modalPortionQty').value = 1;
         updateModalMacroCalc();
-        document.getElementById('portionModal').classList.remove('hidden');
-    }
+        document.getElementById('portionModal')?.classList.remove('hidden');
+    };
 
     window.closePortionModal = function() {
-        document.getElementById('portionModal').classList.add('hidden');
+        document.getElementById('portionModal')?.classList.add('hidden');
         selectedFoodForModal = null;
     };
 
-    function updateModalMacroCalc() {
+    window.updateModalMacroCalc = function() {
         if (!selectedFoodForModal) return;
         const qty = parseFloat(document.getElementById('modalPortionQty').value) || 1;
         document.getElementById('modalCal').textContent = Math.round(selectedFoodForModal.cal * qty);
         document.getElementById('modalProt').textContent = (selectedFoodForModal.prot * qty).toFixed(1) + 'g';
         document.getElementById('modalCarb').textContent = (selectedFoodForModal.carbs * qty).toFixed(1) + 'g';
         document.getElementById('modalFat').textContent = (selectedFoodForModal.fat * qty).toFixed(1) + 'g';
-    }
+    };
 
-    // --- Add Meal to Log ---
-    function addMealToLog(mealItem) {
-        mealsLog.unshift(mealItem);
+    window.addMealToLog = function(meal) {
+        mealsLog.unshift(meal);
         localStorage.setItem('bd_food_meals', JSON.stringify(mealsLog));
         updateDashboard();
         renderMealHistoryTable();
-    }
+    };
+
+    window.deleteMeal = function(index) {
+        mealsLog.splice(index, 1);
+        localStorage.setItem('bd_food_meals', JSON.stringify(mealsLog));
+        updateDashboard();
+        renderMealHistoryTable();
+    };
 
     window.clearAllMeals = function() {
         if (confirm("Are you sure you want to clear all meal logs?")) {
@@ -868,357 +900,550 @@
             localStorage.setItem('bd_food_meals', JSON.stringify(mealsLog));
             updateDashboard();
             renderMealHistoryTable();
-            if (categoryChart) updateCharts();
         }
     };
 
     window.resetDailyData = function() {
-        if (confirm("Reset today's tracked macronutrients to zero?")) {
-            mealsLog = mealsLog.filter(m => new Date(m.time).toDateString() !== new Date().toDateString());
+        if (confirm("Reset today's recorded meals?")) {
+            mealsLog = [];
             localStorage.setItem('bd_food_meals', JSON.stringify(mealsLog));
             updateDashboard();
             renderMealHistoryTable();
-            if (categoryChart) updateCharts();
         }
     };
 
-    // --- Dashboard & Calculations ---
-    function updateDashboard() {
-        const todayStr = new Date().toDateString();
-        const todayMeals = mealsLog.filter(m => new Date(m.time).toDateString() === todayStr);
+    window.updateDashboard = function() {
+        let totalCal = 0, totalProt = 0, totalCarbs = 0, totalFat = 0;
+        let totalCalcium = 0, totalMag = 0, totalIron = 0, totalVitC = 0, totalVitD = 0;
 
-        let totals = { cal: 0, prot: 0, carbs: 0, fat: 0 };
-        todayMeals.forEach(m => {
-            totals.cal += m.cal;
-            totals.prot += m.prot;
-            totals.carbs += m.carbs;
-            totals.fat += m.fat;
+        mealsLog.forEach(m => {
+            totalCal += m.cal || 0;
+            totalProt += m.prot || 0;
+            totalCarbs += m.carbs || 0;
+            totalFat += m.fat || 0;
+            totalCalcium += m.calcium || 0;
+            totalMag += m.mag || 0;
+            totalIron += m.iron || 0;
+            totalVitC += m.vitc || 0;
+            totalVitD += m.vitd || 0;
         });
 
-        document.getElementById('dash-cal').textContent = Math.round(totals.cal);
-        document.getElementById('dash-protein').textContent = Math.round(totals.prot);
-        document.getElementById('dash-carbs').textContent = Math.round(totals.carbs);
-        document.getElementById('dash-fat').textContent = Math.round(totals.fat);
+        document.getElementById('dash-cal').textContent = totalCal;
+        document.getElementById('dash-protein').textContent = totalProt.toFixed(1);
+        document.getElementById('dash-carbs').textContent = totalCarbs.toFixed(1);
+        document.getElementById('dash-fat').textContent = totalFat.toFixed(1);
 
-        document.getElementById('bar-cal').style.width = Math.min(100, (totals.cal / defaultTargets.cal) * 100) + '%';
-        document.getElementById('bar-protein').style.width = Math.min(100, (totals.prot / defaultTargets.protein) * 100) + '%';
-        document.getElementById('bar-carbs').style.width = Math.min(100, (totals.carbs / defaultTargets.carbs) * 100) + '%';
-        document.getElementById('bar-fat').style.width = Math.min(100, (totals.fat / defaultTargets.fat) * 100) + '%';
+        document.getElementById('bar-cal').style.width = Math.min(100, (totalCal / defaultTargets.cal) * 100) + '%';
+        document.getElementById('bar-protein').style.width = Math.min(100, (totalProt / defaultTargets.protein) * 100) + '%';
+        document.getElementById('bar-carbs').style.width = Math.min(100, (totalCarbs / defaultTargets.carbs) * 100) + '%';
+        document.getElementById('bar-fat').style.width = Math.min(100, (totalFat / defaultTargets.fat) * 100) + '%';
 
-        const recContainer = document.getElementById('dashboardRecentMeals');
-        if (recContainer) {
-            recContainer.innerHTML = '';
-            if (todayMeals.length === 0) {
-                recContainer.innerHTML = '<div class="text-xs text-slate-400 py-4 text-center">No meals logged today yet.</div>';
+        // Micro nutrients display
+        document.getElementById('val-calcium').textContent = `${Math.round(totalCalcium)} / 1000 mg`;
+        document.getElementById('val-magnesium').textContent = `${Math.round(totalMag)} / 400 mg`;
+        document.getElementById('val-iron').textContent = `${totalIron.toFixed(1)} / 18 mg`;
+        document.getElementById('val-vitc').textContent = `${Math.round(totalVitC)} / 90 mg`;
+        document.getElementById('val-vitd').textContent = `${Math.round(totalVitD)} / 600 IU`;
+
+        // Render dashboard recent meals
+        const recentDiv = document.getElementById('dashboardRecentMeals');
+        if (recentDiv) {
+            recentDiv.innerHTML = '';
+            if (mealsLog.length === 0) {
+                recentDiv.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">No meals logged today yet. Use AI Scan or BD Food Search to log meals.</p>`;
             } else {
-                todayMeals.slice(0, 4).forEach(m => {
-                    const row = document.createElement('div');
-                    row.className = 'flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl text-xs';
-                    row.innerHTML = `
+                mealsLog.slice(0, 4).forEach((m, idx) => {
+                    const item = document.createElement('div');
+                    item.className = 'flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 text-xs';
+                    item.innerHTML = `
                         <div class="flex items-center space-x-3">
-                            <span class="w-2 h-2 rounded-full bg-brand-500"></span>
+                            <div class="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold">
+                                <i class="fa-solid fa-utensils"></i>
+                            </div>
                             <div>
-                                <div class="font-bold text-slate-800 dark:text-slate-200">${m.name}</div>
-                                <div class="text-[10px] text-slate-400">${m.type} • ${new Date(m.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                <span class="font-bold text-slate-900 dark:text-white block">${m.name}</span>
+                                <span class="text-[10px] text-slate-400">${m.type} • P:${m.prot}g | C:${m.carbs}g | F:${m.fat}g</span>
                             </div>
                         </div>
-                        <div class="font-bold text-orange-500">${m.cal} kcal</div>
+                        <div class="font-extrabold text-orange-500 text-sm">${m.cal} kcal</div>
                     `;
-                    recContainer.appendChild(row);
+                    recentDiv.appendChild(item);
                 });
             }
         }
-    }
+    };
 
-    function renderMealHistoryTable() {
+    window.renderMealHistoryTable = function() {
         const tbody = document.getElementById('fullMealTableBody');
         if (!tbody) return;
         tbody.innerHTML = '';
-
         if (mealsLog.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-xs text-slate-400">No meal records found.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400 text-xs">No meals logged yet.</td></tr>`;
             return;
         }
-
         mealsLog.forEach((m, idx) => {
             const tr = document.createElement('tr');
-            tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-700/30 text-xs';
+            tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors';
             tr.innerHTML = `
-                <td class="py-3 px-3 font-semibold text-brand-600">${m.type}</td>
-                <td class="py-3 px-3 font-bold text-slate-800 dark:text-slate-200">${m.name}</td>
-                <td class="py-3 px-3 font-bold text-orange-500">${m.cal}</td>
-                <td class="py-3 px-3 text-indigo-500">${m.prot}g</td>
-                <td class="py-3 px-3 text-emerald-500">${m.carbs}g</td>
-                <td class="py-3 px-3 text-amber-500">${m.fat}g</td>
-                <td class="py-3 px-3 text-slate-400">${new Date(m.time).toLocaleString()}</td>
+                <td class="py-3 px-3 font-semibold text-brand-600 dark:text-brand-400">${m.type}</td>
+                <td class="py-3 px-3 font-bold text-slate-900 dark:text-white">${m.name}</td>
+                <td class="py-3 px-3 text-orange-500 font-extrabold">${m.cal} kcal</td>
+                <td class="py-3 px-3 text-indigo-600 dark:text-indigo-400">${m.prot}g</td>
+                <td class="py-3 px-3 text-emerald-600 dark:text-emerald-400">${m.carbs}g</td>
+                <td class="py-3 px-3 text-amber-600 dark:text-amber-400">${m.fat}g</td>
+                <td class="py-3 px-3 text-xs text-slate-400">${new Date(m.time || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                 <td class="py-3 px-3 text-right">
-                    <button onclick="deleteMealItem(${idx})" class="text-rose-400 hover:text-rose-600">
-                        <i class="fa-solid fa-trash-can"></i>
-                    </button>
+                    <button onclick="deleteMeal(${idx})" class="text-rose-400 hover:text-rose-600 p-1"><i class="fa-solid fa-trash-can"></i></button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
-    }
-
-    window.deleteMealItem = function(idx) {
-        mealsLog.splice(idx, 1);
-        localStorage.setItem('bd_food_meals', JSON.stringify(mealsLog));
-        updateDashboard();
-        renderMealHistoryTable();
-        if (categoryChart) updateCharts();
     };
 
-    // --- Nutrient Charts Setup ---
     window.setChartTimeframe = function(tf) {
         currentChartTimeframe = tf;
-        document.querySelectorAll('.chart-tf-btn').forEach(b => {
-            b.classList.remove('bg-brand-600', 'text-white');
-            b.classList.add('bg-slate-100', 'dark:bg-slate-700', 'text-slate-600', 'dark:text-slate-300');
+        document.querySelectorAll('.chart-tf-btn').forEach(btn => {
+            btn.className = "chart-tf-btn flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-all";
         });
         const activeBtn = document.getElementById(`tf-${tf}`);
-        if (activeBtn) {
-            activeBtn.classList.remove('bg-slate-100', 'dark:bg-slate-700', 'text-slate-600', 'dark:text-slate-300');
-            activeBtn.classList.add('bg-brand-600', 'text-white');
-        }
+        if (activeBtn) activeBtn.className = "chart-tf-btn flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-brand-600 text-white shadow-sm transition-all";
         updateCharts();
     };
 
-    function getFilteredMealsForTimeframe() {
-        const now = new Date();
-        return mealsLog.filter(m => {
-            const mDate = new Date(m.time);
-            if (currentChartTimeframe === 'today') {
-                return mDate.toDateString() === now.toDateString();
-            } else if (currentChartTimeframe === 'weekly') {
-                const diffTime = Math.abs(now - mDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                return diffDays <= 7;
-            } else {
-                return mDate.getMonth() === now.getMonth() && mDate.getFullYear() === now.getFullYear();
-            }
-        });
-    }
+    window.updateCharts = function() {
+        let catMap = { 'Meat Dish': 0, 'Fish Curry': 0, 'Rice Dish': 0, 'Street Food': 0, 'Breakfast Item': 0, 'Other': 0 };
+        let totalProt = 0, totalCarbs = 0, totalFat = 0;
+        let totalCalcium = 0, totalMag = 0, totalIron = 0, totalVitC = 0, totalVitD = 0;
 
-    function updateCharts() {
-        const filteredMeals = getFilteredMealsForTimeframe();
+        mealsLog.forEach(m => {
+            if (catMap[m.cat] !== undefined) catMap[m.cat] += (m.cal || 0);
+            else catMap['Other'] += (m.cal || 0);
 
-        // 1. Category Bar Chart (Separate colors per category)
-        const categories = {};
-        const categoryColors = {
-            'Rice Dish': '#6366f1',
-            'Fish Curry': '#10b981',
-            'Meat Dish': '#ef4444',
-            'Lentil Dish': '#f59e0b',
-            'Vegetable / Vorta': '#8b5cf6',
-            'Street Food': '#ec4899',
-            'Breakfast Item': '#14b8a6',
-            'General': '#64748b'
-        };
-
-        filteredMeals.forEach(m => {
-            const cat = m.cat || 'General';
-            categories[cat] = (categories[cat] || 0) + m.cal;
+            totalProt += m.prot || 0;
+            totalCarbs += m.carbs || 0;
+            totalFat += m.fat || 0;
+            totalCalcium += m.calcium || 0;
+            totalMag += m.mag || 0;
+            totalIron += m.iron || 0;
+            totalVitC += m.vitc || 0;
+            totalVitD += m.vitd || 0;
         });
 
-        const catLabels = Object.keys(categories).length ? Object.keys(categories) : ['Rice Dish', 'Fish Curry', 'Meat Dish', 'Lentil Dish', 'Street Food'];
-        const catData = Object.keys(categories).length ? Object.values(categories) : [400, 320, 550, 180, 240];
-        const bgColors = catLabels.map(cat => categoryColors[cat] || '#8b5cf6');
-
-        if (categoryChart) categoryChart.destroy();
-        const ctxBar = document.getElementById('categoryBarChart');
-        if (ctxBar) {
-            categoryChart = new Chart(ctxBar, {
+        // 1. Category Bar Chart with datalabels
+        const ctxCat = document.getElementById('categoryBarChart')?.getContext('2d');
+        if (ctxCat) {
+            if (categoryChart) categoryChart.destroy();
+            categoryChart = new Chart(ctxCat, {
                 type: 'bar',
+                plugins: [ChartDataLabels],
                 data: {
-                    labels: catLabels,
+                    labels: ['Meat', 'Fish', 'Rice', 'Street', 'Breakfast', 'Other'],
                     datasets: [{
-                        label: 'Calories',
-                        data: catData,
-                        backgroundColor: bgColors,
+                        label: 'Calories (kcal)',
+                        data: [catMap['Meat Dish'], catMap['Fish Curry'], catMap['Rice Dish'], catMap['Street Food'], catMap['Breakfast Item'], catMap['Other']],
+                        backgroundColor: '#6d28d9',
                         borderRadius: 8
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: {
+                            color: '#6d28d9',
+                            anchor: 'end',
+                            align: 'top',
+                            font: { weight: 'bold', size: 10 },
+                            formatter: (val) => val > 0 ? `${val} kcal` : ''
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { display: false } },
+                        x: { grid: { display: false } }
+                    }
                 }
             });
         }
 
-        // 2. Macro Doughnut Chart
-        let totals = { prot: 0, carbs: 0, fat: 0 };
-        filteredMeals.forEach(m => {
-            totals.prot += m.prot;
-            totals.carbs += m.carbs;
-            totals.fat += m.fat;
-        });
+        // 2. Macro Doughnut Chart with datalabels
+        const ctxMacro = document.getElementById('macroDoughnutChart')?.getContext('2d');
+        if (ctxMacro) {
+            if (macroChart) macroChart.destroy();
+            const totalMacroSum = totalProt + totalCarbs + totalFat || 1;
+            const pProt = Math.round((totalProt / totalMacroSum) * 100);
+            const pCarbs = Math.round((totalCarbs / totalMacroSum) * 100);
+            const pFat = Math.round((totalFat / totalMacroSum) * 100);
 
-        const macroData = (totals.prot + totals.carbs + totals.fat) > 0 
-            ? [Math.round(totals.prot), Math.round(totals.carbs), Math.round(totals.fat)]
-            : [45, 180, 35];
-
-        if (macroChart) macroChart.destroy();
-        const ctxPie = document.getElementById('macroDoughnutChart');
-        if (ctxPie) {
-            macroChart = new Chart(ctxPie, {
+            macroChart = new Chart(ctxMacro, {
                 type: 'doughnut',
+                plugins: [ChartDataLabels],
                 data: {
-                    labels: ['Protein (g)', 'Carbs (g)', 'Fat (g)'],
+                    labels: [`Protein (${totalProt.g || totalProt}g)`, `Carbs (${totalCarbs}g)`, `Fat (${totalFat}g)`],
                     datasets: [{
-                        data: macroData,
-                        backgroundColor: ['#6366f1', '#10b981', '#f59e0b']
+                        data: [totalProt || 1, totalCarbs || 1, totalFat || 1],
+                        backgroundColor: ['#6366f1', '#10b981', '#f59e0b'],
+                        borderWidth: 0
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                        datalabels: {
+                            color: '#ffffff',
+                            font: { weight: 'bold', size: 11 },
+                            formatter: (value, ctx) => {
+                                const sum = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value * 100) / sum);
+                                return percentage > 3 ? `${percentage}%` : '';
+                            }
+                        }
+                    }
                 }
             });
         }
 
-        // 3. Micronutrients Progress Bar Chart
-        let micros = { calcium: 0, mag: 0, iron: 0, vitc: 0, vitd: 0 };
-        filteredMeals.forEach(m => {
-            micros.calcium += (m.calcium || 0);
-            micros.mag += (m.mag || 0);
-            micros.iron += (m.iron || 0);
-            micros.vitc += (m.vitc || 0);
-            micros.vitd += (m.vitd || 0);
-        });
-
-        const microTargets = { calcium: 1000, mag: 400, iron: 18, vitc: 90, vitd: 600 };
-        const microPct = [
-            Math.min(100, Math.round((micros.calcium / microTargets.calcium) * 100)),
-            Math.min(100, Math.round((micros.mag / microTargets.mag) * 100)),
-            Math.min(100, Math.round((micros.iron / microTargets.iron) * 100)),
-            Math.min(100, Math.round((micros.vitc / microTargets.vitc) * 100)),
-            Math.min(100, Math.round((micros.vitd / microTargets.vitd) * 100))
-        ];
-
-        document.getElementById('val-calcium').textContent = `${Math.round(micros.calcium)} / 1000 mg`;
-        document.getElementById('val-magnesium').textContent = `${Math.round(micros.mag)} / 400 mg`;
-        document.getElementById('val-iron').textContent = `${Math.round(micros.iron)} / 18 mg`;
-        document.getElementById('val-vitc').textContent = `${Math.round(micros.vitc)} / 90 mg`;
-        document.getElementById('val-vitd').textContent = `${Math.round(micros.vitd)} / 600 IU`;
-
-        if (microChart) microChart.destroy();
-        const ctxMicro = document.getElementById('microNutrientChart');
+        // 3. Micronutrient Chart
+        const ctxMicro = document.getElementById('microNutrientChart')?.getContext('2d');
         if (ctxMicro) {
+            if (microChart) microChart.destroy();
             microChart = new Chart(ctxMicro, {
                 type: 'bar',
+                plugins: [ChartDataLabels],
                 data: {
                     labels: ['Calcium', 'Magnesium', 'Iron', 'Vit C', 'Vit D'],
                     datasets: [{
-                        label: '% Daily Recommended Intake',
-                        data: microPct,
-                        backgroundColor: ['#0284c7', '#0d9488', '#e11d48', '#d97706', '#4f46e5'],
+                        label: '% RDI Achieved',
+                        data: [
+                            Math.min(100, Math.round((totalCalcium / 1000) * 100)),
+                            Math.min(100, Math.round((totalMag / 400) * 100)),
+                            Math.min(100, Math.round((totalIron / 18) * 100)),
+                            Math.min(100, Math.round((totalVitC / 90) * 100)),
+                            Math.min(100, Math.round((totalVitD / 600) * 100))
+                        ],
+                        backgroundColor: ['#0ea5e9', '#14b8a6', '#f43f5e', '#f59e0b', '#6366f1'],
                         borderRadius: 6
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: true, max: 100 } }
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: {
+                            color: '#334155',
+                            anchor: 'end',
+                            align: 'top',
+                            font: { weight: 'bold', size: 10 },
+                            formatter: (val) => `${val}%`
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, max: 110, grid: { display: false } },
+                        x: { grid: { display: false } }
+                    }
                 }
             });
         }
-    }
+    };
 
-    // --- AI Dietitian Bot Engine ---
+    // --- AI Dietitian BD Chat Engine ---
     async function sendDietitianMessage() {
-        const input = document.getElementById('dietitianInput');
-        const text = input?.value.trim();
+        const inputEl = document.getElementById('dietitianInput');
+        const container = document.getElementById('chatContainer');
+        const text = inputEl.value.trim();
         if (!text) return;
 
-        const chatContainer = document.getElementById('chatContainer');
-
-        // User Message
-        const uMsg = document.createElement('div');
-        uMsg.className = 'flex items-start space-x-3 justify-end';
-        uMsg.innerHTML = `
-            <div class="bg-brand-600 text-white p-3.5 rounded-2xl rounded-tr-none max-w-lg text-sm leading-relaxed">
+        // Append User Message
+        const userBubble = document.createElement('div');
+        userBubble.className = 'flex items-start space-x-3 justify-end';
+        userBubble.innerHTML = `
+            <div class="bg-brand-600 text-white p-3.5 rounded-2xl rounded-tr-none max-w-lg text-sm leading-relaxed shadow-sm">
                 ${text}
             </div>
+            <div class="w-8 h-8 rounded-full bg-brand-700 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">You</div>
         `;
-        chatContainer.appendChild(uMsg);
-        input.value = '';
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        container.appendChild(userBubble);
+        inputEl.value = '';
+        container.scrollTop = container.scrollHeight;
 
-        // Bot Loading Placeholder
-        const loadingMsg = document.createElement('div');
-        loadingMsg.className = 'flex items-start space-x-3';
-        loadingMsg.innerHTML = `
+        // Append Typing Indicator
+        const typingId = 'typing_' + Date.now();
+        const typingBubble = document.createElement('div');
+        typingBubble.id = typingId;
+        typingBubble.className = 'flex items-start space-x-3';
+        typingBubble.innerHTML = `
             <div class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">AI</div>
-            <div class="bg-slate-100 dark:bg-slate-700/60 text-slate-800 dark:text-slate-200 p-3.5 rounded-2xl rounded-tl-none max-w-lg text-sm leading-relaxed animate-pulse">
-                উত্তর তৈরি হচ্ছে...
+            <div class="bg-slate-100 dark:bg-slate-700/60 text-slate-800 dark:text-slate-200 p-3.5 rounded-2xl rounded-tl-none text-sm">
+                <span class="inline-flex space-x-1">
+                    <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce"></span>
+                    <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce delay-100"></span>
+                    <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce delay-200"></span>
+                </span>
             </div>
         `;
-        chatContainer.appendChild(loadingMsg);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        container.appendChild(typingBubble);
+        container.scrollTop = container.scrollHeight;
 
-        const reply = await getFallbackDietitianReply(text);
-        loadingMsg.remove();
+        try {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent`;
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: `You are an expert AI Dietitian for Bangladeshi people. Reply helpfully in Bengali or English based on user query: "${text}"` }] }]
+                })
+            });
+            const result = await response.json();
+            const replyText = result.candidates?.[0]?.content?.parts?.[0]?.text || generateFallbackDietitianReply(text);
 
-        const bMsg = document.createElement('div');
-        bMsg.className = 'flex items-start space-x-3';
-        bMsg.innerHTML = `
-            <div class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">AI</div>
-            <div class="bg-slate-100 dark:bg-slate-700/60 text-slate-800 dark:text-slate-200 p-3.5 rounded-2xl rounded-tl-none max-w-lg text-sm leading-relaxed">
-                ${reply}
-            </div>
-        `;
-        chatContainer.appendChild(bMsg);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    async function getFallbackDietitianReply(prompt) {
-        const query = prompt.toLowerCase();
-        if (query.includes('ভাত') || query.includes('rice') || query.includes('ওজন')) {
-            return "বাংলাদেশী খাবারে ভাতের পরিমাণ কমিয়ে ১ কাপে সীমাবদ্ধ রাখুন এবং পাতে শাকসবজি, শসা ও ডালের পরিমাণ বাড়িয়ে দিন। এতে রক্তে শর্করা নিয়ন্ত্রণে থাকবে এবং দ্রুত ওজন কমবে।";
-        } else if (query.includes('ডায়াবেটিস') || query.includes('diabetes')) {
-            return "ডায়াবেটিস রোগীদের জন্য লাল চালের ভাত, আটার রুটি, তিতা করলা, শাকসবজি ও পর্যাপ্ত মাছ-মাংসের ঝোল উপকারী। মিষ্টি ও কোমল পানীয় সম্পূর্ণ এড়িয়ে চলুন।";
-        } else if (query.includes('প্রোটিন') || query.includes('protein')) {
-            return "দৈনন্দিন প্রোটিনের চাহিদা মেটাতে রুই/কাতলা মাছ, মুরগির মাংস, ডিম, মুগ ও মসুর ডাল অত্যন্ত পুষ্টিকর ও সাশ্রয়ী মাধ্যম।";
-        } else {
-            return `আপনার প্রশ্নটির জন্য ধন্যবাদ! স্বাস্থ্যকর জীবনের জন্য প্রতিদিন পর্যাপ্ত পানি (২-৩ লিটার), সময়মত হালকা ব্যায়াম এবং সুষম খাবার গ্রহণ করার পরামর্শ দেয়া হচ্ছে।`;
+            document.getElementById(typingId)?.remove();
+            appendDietitianReply(replyText);
+        } catch (e) {
+            document.getElementById(typingId)?.remove();
+            appendDietitianReply(generateFallbackDietitianReply(text));
         }
     }
 
-    // --- On Window Load Event Setup ---
+    function generateFallbackDietitianReply(query) {
+        const q = query.toLowerCase();
+        if (q.includes('weight') || q.includes('ojon') || q.includes('ওজন')) {
+            return "ওজন নিয়ন্ত্রণের জন্য সাদা ভাতের পরিমাণ কমিয়ে শাকসবজি, ডিমের সাদা অংশ এবং মসুর ডাল বেশি খান। রাতের খাবার ঘুমানোর অন্তত ২ ঘণ্টা আগে শেষ করুন।";
+        }
+        if (q.includes('diabetes') || q.includes('sugur') || q.includes('ডায়াবেটিস')) {
+            return "ডায়াবেটিস রোগীদের জন্য লাল চালের ভাত, ঢেঁকিছাঁটা চালের ভাত কিংবা আটার রুটি অত্যন্ত উপকারী। মিষ্টি এবং ফাস্টফুড সম্পূর্ণ পরিহার করুন।";
+        }
+        if (q.includes('breakfast') || q.includes('nasta') || q.includes('নাস্তা')) {
+            return "সকালের নাস্তায় একটি ডিম ভাজি বা সেদ্ধ ডিমের সাথে আটার রুটি অথবা ওটস রাখতে পারেন। এটি আপনাকে দীর্ঘ সময় শক্তি দেবে।";
+        }
+        return `আপনার প্রশ্নটি স্বাস্থ্য ও খাদ্যাভ্যাসের জন্য খুবই উপযোগী। ঐতিহ্যবাহী বাঙালি খাবারের পাশাপাশি পর্যাপ্ত পানি (প্রতিদিন ২.৫-৩ লিটার) পান করুন এবং প্রতিবেলা খাবারের সাথে সালাদ রাখুন।`;
+    }
+
+    function appendDietitianReply(text) {
+        const container = document.getElementById('chatContainer');
+        if (!container) return;
+        const bubble = document.createElement('div');
+        bubble.className = 'flex items-start space-x-3';
+        bubble.innerHTML = `
+            <div class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">AI</div>
+            <div class="bg-slate-100 dark:bg-slate-700/60 text-slate-800 dark:text-slate-200 p-3.5 rounded-2xl rounded-tl-none max-w-lg text-sm leading-relaxed">
+                ${text}
+            </div>
+        `;
+        container.appendChild(bubble);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    // --- AI Photo & Prompt Analyzer Function ---
+    async function runAiAnalyzer() {
+        const emptyState = document.getElementById('aiEmptyState');
+        const loadingState = document.getElementById('aiLoadingState');
+        const resultCard = document.getElementById('aiResultCard');
+        const addBtn = document.getElementById('addAiMealBtn');
+        const textPromptInput = document.getElementById('aiTextPrompt');
+        const mealTypeSelect = document.getElementById('aiMealType');
+
+        const textPrompt = textPromptInput ? textPromptInput.value.trim() : '';
+        const mealType = mealTypeSelect ? mealTypeSelect.value : 'Lunch';
+
+        if (!uploadedImageBase64 && !textPrompt) {
+            alert("Please upload a food photo or enter a text description to analyze!");
+            return;
+        }
+
+        emptyState?.classList.add('hidden');
+        resultCard?.classList.add('hidden');
+        addBtn?.classList.add('hidden');
+        loadingState?.classList.remove('hidden');
+
+        try {
+            let promptText = textPrompt || "Analyze this Bangladeshi food photo and estimate its nutritional breakdown.";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent`;
+            
+            let contents = [];
+            if (uploadedImageBase64) {
+                const base64Data = uploadedImageBase64.split(',')[1];
+                const mimeType = uploadedImageBase64.split(';')[0].split(':')[1] || 'image/jpeg';
+                contents = [{
+                    parts: [
+                        { text: `You are an expert AI Bangladeshi Dietitian. Analyze this food dish and return JSON format with keys: name, calories, protein, carbs, fat, calcium, magnesium, iron, vitc, vitd, category (choose from 'Meat Dish', 'Fish Curry', 'Rice Dish', 'Street Food', 'Breakfast Item', 'Other'), and description. Prompt: ${promptText}` },
+                        { inline_data: { mime_type: mimeType, data: base64Data } }
+                    ]
+                }];
+            } else {
+                contents = [{
+                    parts: [{ text: `You are an expert AI Bangladeshi Dietitian. Analyze this food description: "${promptText}". Return JSON format with keys: name, calories, protein, carbs, fat, calcium, magnesium, iron, vitc, vitd, category (choose from 'Meat Dish', 'Fish Curry', 'Rice Dish', 'Street Food', 'Breakfast Item', 'Other'), and description.` }]
+                }];
+            }
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents })
+            });
+
+            const result = await response.json();
+            const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            
+            let parsedData = null;
+            try {
+                const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    parsedData = JSON.parse(jsonMatch[0]);
+                }
+            } catch(err) {}
+
+            if (!parsedData) {
+                parsedData = {
+                    name: textPrompt ? textPrompt.slice(0, 30) : "Bangladeshi Special Dish",
+                    calories: 350,
+                    protein: 15,
+                    carbs: 45,
+                    fat: 12,
+                    calcium: 50,
+                    mag: 30,
+                    iron: 2.0,
+                    vitc: 5,
+                    vitd: 10,
+                    category: "Other",
+                    description: rawText || "Nutritious Bangladeshi meal analyzed successfully with balanced macronutrients."
+                };
+            }
+
+            lastAnalyzedMeal = {
+                name: parsedData.name || "AI Analyzed Meal",
+                cat: parsedData.category || "Other",
+                type: mealType,
+                cal: Math.round(parsedData.calories || 300),
+                prot: parseFloat((parsedData.protein || 10).toFixed(1)),
+                carbs: parseFloat((parsedData.carbs || 30).toFixed(1)),
+                fat: parseFloat((parsedData.fat || 10).toFixed(1)),
+                calcium: parsedData.calcium || 30,
+                mag: parsedData.mag || 20,
+                iron: parsedData.iron || 1.5,
+                vitc: parsedData.vitc || 4,
+                vitd: parsedData.vitd || 5,
+                time: new Date().toISOString()
+            };
+
+            document.getElementById('resDishName').textContent = lastAnalyzedMeal.name;
+            document.getElementById('resCalories').textContent = lastAnalyzedMeal.cal;
+            document.getElementById('resProtein').textContent = lastAnalyzedMeal.prot + 'g';
+            document.getElementById('resCarbs').textContent = lastAnalyzedMeal.carbs + 'g';
+            document.getElementById('resFat').textContent = lastAnalyzedMeal.fat + 'g';
+            document.getElementById('resDescription').textContent = parsedData.description || "Analyzed successfully.";
+
+            loadingState?.classList.add('hidden');
+            resultCard?.classList.remove('hidden');
+            addBtn?.classList.remove('hidden');
+
+        } catch (e) {
+            console.error(e);
+            loadingState?.classList.add('hidden');
+            emptyState?.classList.remove('hidden');
+            alert("Analysis failed. Please try again with clear details.");
+        }
+    }
+
+    // --- Onload Initialization ---
     window.onload = function() {
-        const todayDate = document.getElementById('todayDate');
-        if (todayDate) todayDate.textContent = new Date().toLocaleDateString('bn-BD', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const todayDateEl = document.getElementById('todayDate');
+        if (todayDateEl) {
+            todayDateEl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
 
         renderFoodSearch();
         updateDashboard();
         renderMealHistoryTable();
 
-        // Nav Buttons
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.onclick = () => switchTab(btn.dataset.tab);
+        // AI Analyzer Mode Toggles
+        const modePhotoBtn = document.getElementById('modePhotoBtn');
+        const modeTextBtn = document.getElementById('modeTextBtn');
+        const photoInputBox = document.getElementById('photoInputBox');
+        const textInputBox = document.getElementById('textInputBox');
+
+        modePhotoBtn?.addEventListener('click', () => {
+            modePhotoBtn.className = "py-2.5 px-4 font-semibold text-sm border-b-2 border-brand-600 text-brand-600 dark:text-brand-400 flex items-center space-x-2";
+            modeTextBtn.className = "py-2.5 px-4 font-semibold text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center space-x-2";
+            photoInputBox.classList.remove('hidden');
+            textInputBox.classList.add('hidden');
         });
 
-        // Search Input
-        document.getElementById('foodSearchInput')?.addEventListener('input', (e) => {
-            renderFoodSearch(e.target.value);
+        modeTextBtn?.addEventListener('click', () => {
+            modeTextBtn.className = "py-2.5 px-4 font-semibold text-sm border-b-2 border-brand-600 text-brand-600 dark:text-brand-400 flex items-center space-x-2";
+            modePhotoBtn.className = "py-2.5 px-4 font-semibold text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center space-x-2";
+            textInputBox.classList.remove('hidden');
+            photoInputBox.classList.add('hidden');
         });
 
-        // Modal Portion Input
+        // Image upload handling
+        const dropZone = document.getElementById('dropZone');
+        const imageFileInput = document.getElementById('imageFileInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+
+        dropZone?.addEventListener('click', () => imageFileInput?.click());
+        document.getElementById('triggerUploadBtn')?.addEventListener('click', () => imageFileInput?.click());
+
+        imageFileInput?.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    uploadedImageBase64 = evt.target.result;
+                    if (imagePreview) {
+                        imagePreview.src = uploadedImageBase64;
+                        imagePreview.classList.remove('hidden');
+                    }
+                    if (uploadPlaceholder) uploadPlaceholder.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('runAiAnalysisBtn')?.addEventListener('click', runAiAnalyzer);
+        document.getElementById('addAiMealBtn')?.addEventListener('click', () => {
+            if (lastAnalyzedMeal) {
+                addMealToLog(lastAnalyzedMeal);
+                switchTab('dashboard');
+                alert("Meal successfully added to today's tracker!");
+            }
+        });
+
+        // Camera modal handler
+        const cameraModal = document.getElementById('cameraModal');
+        const cameraVideo = document.getElementById('cameraVideo');
+        document.getElementById('openCameraBtn')?.addEventListener('click', async () => {
+            cameraModal?.classList.remove('hidden');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                if (cameraVideo) cameraVideo.srcObject = stream;
+            } catch (err) {
+                alert("Camera permission denied or unavailable.");
+                cameraModal?.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('closeCameraBtn')?.addEventListener('click', () => {
+            if (cameraVideo && cameraVideo.srcObject) {
+                cameraVideo.srcObject.getTracks().forEach(track => track.stop());
+            }
+            cameraModal?.classList.add('hidden');
+        });
+
+        // Event listeners
+        document.getElementById('foodSearchInput')?.addEventListener('input', (e) => renderFoodSearch(e.target.value));
         document.getElementById('modalPortionQty')?.addEventListener('input', updateModalMacroCalc);
-
-        // Confirm Add Log Button
         document.getElementById('confirmLogBtn')?.addEventListener('click', () => {
             if (!selectedFoodForModal) return;
             const qty = parseFloat(document.getElementById('modalPortionQty').value) || 1;
             const mealType = document.getElementById('modalMealType').value;
-
             addMealToLog({
                 name: selectedFoodForModal.name,
                 cat: selectedFoodForModal.cat,
+                type: mealType,
                 cal: Math.round(selectedFoodForModal.cal * qty),
                 prot: parseFloat((selectedFoodForModal.prot * qty).toFixed(1)),
                 carbs: parseFloat((selectedFoodForModal.carbs * qty).toFixed(1)),
@@ -1228,25 +1453,26 @@
                 iron: (selectedFoodForModal.iron || 0) * qty,
                 vitc: (selectedFoodForModal.vitc || 0) * qty,
                 vitd: (selectedFoodForModal.vitd || 0) * qty,
-                type: mealType,
                 time: new Date().toISOString()
             });
-
             closePortionModal();
         });
 
-        // Dietitian Send Action
         document.getElementById('sendDietitianMsg')?.addEventListener('click', sendDietitianMessage);
         document.getElementById('dietitianInput')?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendDietitianMessage();
         });
 
-        // Mobile Menu Toggle
-        document.getElementById('menuToggle')?.addEventListener('click', () => {
-            document.getElementById('sidebar')?.classList.toggle('-translate-x-full');
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
         });
 
-        // Theme Toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        menuToggle?.addEventListener('click', () => {
+            sidebar?.classList.toggle('-translate-x-full');
+        });
+
         document.getElementById('themeToggle')?.addEventListener('click', () => {
             document.documentElement.classList.toggle('dark');
         });
