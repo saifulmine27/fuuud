@@ -54,6 +54,7 @@
             background: rgba(109, 40, 217, 0.6);
         }
     </style>
+<script>(function(){try{var C=window.Capacitor;var app=!!(C&&((C.isNativePlatform&&C.isNativePlatform())||(C.getPlatform&&C.getPlatform()!=='web')))||location.hostname==='localhost';if(app)document.documentElement.classList.add('is-app');}catch(e){}})();</script>
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200 flex flex-col md:flex-row">
 
@@ -70,7 +71,7 @@
                 BN / EN
             </button>
             <button id="menuToggle" class="p-2 text-slate-600 dark:text-slate-300">
-                <i class="fa-solid fa-gear text-xl"></i>
+                <i class="fa-solid fa-bars text-xl"></i>
             </button>
         </div>
     </div>
@@ -130,7 +131,8 @@
                     বাংলা
                 </button>
             </div>
-            <button onclick="promptSetApiKey()" class="w-full flex items-center space-x-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"><i class="fa-solid fa-key"></i><span>AI Scan API Key</span></button>
+            <div id="flAccount" class="text-xs"></div>
+            <button onclick="setClaudeKey()" class="w-full flex items-center space-x-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"><i class="fa-solid fa-key"></i><span>Claude API Key</span></button>
             <div class="pt-2 flex items-center space-x-3">
                 <div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 text-xs">
                     BD
@@ -167,7 +169,7 @@
         <section id="tab-dashboard" class="tab-content space-y-6">
             
             <!-- Daily Macros Grid -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- Calories Card -->
                 <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm relative overflow-hidden">
                     <div class="flex justify-between items-start mb-3">
@@ -1540,7 +1542,8 @@
     </script>
 
 <style>
-.bn{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:35;background:#fff;border-top:.5px solid #e2e8f0;padding:6px 0 calc(8px + env(safe-area-inset-bottom,0px));justify-content:space-around}
+.is-app .bn{display:flex}
+.bn{display:none;position:fixed;left:0;right:0;bottom:0;z-index:35;background:#fff;border-top:.5px solid #e2e8f0;padding:6px 0 calc(8px + env(safe-area-inset-bottom,0px));justify-content:space-around}
 .dark .bn{background:#1e293b;border-color:#334155}
 .bn button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:#94a3b8;background:none;border:0;padding:4px 0}
 .bn button i{font-size:18px}
@@ -1558,11 +1561,13 @@
 .fl-del.fl-armed{background:#ef4444;color:#fff;border-color:#ef4444}
 @media(min-width:768px){.bn,.ms{display:none!important}}
 @media(max-width:767px){
-#sidebar{display:none!important}
-main{padding-bottom:5.5rem!important}
-#tab-dashboard>.grid:first-child>div{padding:12px!important}
-#tab-dashboard>.grid:first-child .w-10{display:none!important}
-#tab-dashboard>.grid:first-child .text-2xl{font-size:1.05rem!important}
+.is-app #sidebar{display:none!important}
+.is-app #flAccount{display:none!important}
+.is-app main{padding-bottom:5.5rem!important}
+.is-app #tab-dashboard>.grid:first-child{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+.is-app #tab-dashboard>.grid:first-child>div{padding:12px!important}
+.is-app #tab-dashboard>.grid:first-child .w-10{display:none!important}
+.is-app #tab-dashboard>.grid:first-child .text-2xl{font-size:1.05rem!important}
 }
 </style>
 <nav id="bottomNav" class="bn">
@@ -1577,7 +1582,6 @@ main{padding-bottom:5.5rem!important}
 <button data-ms="meals"><i class="fa-solid fa-clock-rotate-left"></i><span></span></button>
 <button data-ms="theme"><i class="fa-solid fa-moon"></i><span></span></button>
 <button data-ms="lang"><i class="fa-solid fa-language"></i><span></span></button>
-<button data-ms="key"><i class="fa-solid fa-key"></i><span></span></button>
 <button data-ms="claude"><i class="fa-solid fa-robot"></i><span></span></button>
 </div>
 </div>
@@ -1631,7 +1635,7 @@ window.toggleLanguage=function(){origLang();labels();};
 document.querySelectorAll('#bottomNav [data-bn]').forEach(function(b){
 b.addEventListener('click',function(){window.switchTab(b.getAttribute('data-bn'));});
 });
-document.getElementById('menuToggle').addEventListener('click',openSheet);
+if(document.documentElement.classList.contains('is-app')){document.getElementById('menuToggle').addEventListener('click',openSheet);var mi=document.querySelector('#menuToggle i');if(mi)mi.className='fa-solid fa-gear text-xl';}
 document.getElementById('mSheet').addEventListener('click',function(e){if(e.target===this)closeSheet();});
 document.querySelectorAll('#mSheet [data-ms]').forEach(function(b){
 b.addEventListener('click',function(){
@@ -1650,7 +1654,7 @@ function q(id){return document.getElementById(id);}
 q('aiResultCard').classList.add('hidden');
 q('addAiMealBtn').classList.add('hidden');
 q('aiLoadingState').classList.add('hidden');
-q('aiEmptyState').classList.remove('hidden');
+restoreEmpty();q('aiEmptyState').classList.remove('hidden');
 var img=q('imagePreview');
 if(img){img.removeAttribute('src');img.classList.add('hidden');}
 var ph=q('uploadPlaceholder');if(ph)ph.classList.remove('hidden');
@@ -1736,12 +1740,54 @@ microChartInstance.update('none');
 }catch(e){}
 };
 var CLAUDE_EMBEDDED_KEY='';
+var CLAUDE_MODEL='claude-sonnet-5-5';
 var chatHist=[];
-function claudeKey(){return localStorage.getItem('user_claude_api_key')||CLAUDE_EMBEDDED_KEY;}
+var EMPTY_HTML=document.getElementById('aiEmptyState')?document.getElementById('aiEmptyState').innerHTML:'';
+function claudeKey(){return (localStorage.getItem('user_claude_api_key')||CLAUDE_EMBEDDED_KEY||'').trim();}
+function ensureKeyModal(){
+if(document.getElementById('keyModal'))return;
+var d=document.createElement('div');d.id='keyModal';
+d.style.cssText='position:fixed;inset:0;z-index:90;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;padding:16px';
+d.innerHTML='<div style="background:#fff;color:#0f172a;border-radius:16px;padding:18px;width:100%;max-width:380px"><div style="font-weight:600;font-size:16px;margin-bottom:6px">Claude API Key</div><div style="font-size:12px;color:#64748b;margin-bottom:10px">console.anthropic.com থেকে key নিন। key শুধু এই ডিভাইসে সেভ থাকে।</div><input id="keyInput" type="password" autocomplete="off" placeholder="sk-ant-..." style="width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:10px;font-size:14px;margin-bottom:6px;box-sizing:border-box;color:#0f172a;background:#fff"><div id="keyErr" style="font-size:12px;color:#e11d48;min-height:16px;margin-bottom:8px"></div><div style="display:flex;gap:8px"><button id="keyCancel" style="flex:1;padding:10px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:#0f172a">বাতিল</button><button id="keySave" style="flex:1;padding:10px;border-radius:10px;border:0;background:#5b21b6;color:#fff;font-weight:600">সেভ করুন</button></div></div>';
+document.body.appendChild(d);
+document.getElementById('keyCancel').addEventListener('click',function(){d.style.display='none';});
+document.getElementById('keySave').addEventListener('click',function(){
+var v=document.getElementById('keyInput').value.replace(/\s+/g,'');
+if(v.indexOf('sk-ant-')!==0){document.getElementById('keyErr').textContent='key টা sk-ant- দিয়ে শুরু হওয়া উচিত। আবার দেখে paste করুন।';return;}
+localStorage.setItem('user_claude_api_key',v);
+d.style.display='none';
+});
+}
 window.setClaudeKey=function(){
-var k=prompt('Claude (Anthropic) API Key:',localStorage.getItem('user_claude_api_key')||'');
-if(k!==null){localStorage.setItem('user_claude_api_key',k.trim());alert('Claude API Key saved');}
+ensureKeyModal();
+document.getElementById('keyErr').textContent='';
+document.getElementById('keyInput').value='';
+document.getElementById('keyModal').style.display='flex';
 };
+async function callClaude(messages,system,maxTokens){
+var key=claudeKey();
+if(!key)throw new Error('Claude API Key বসানো নেই');
+var body={model:CLAUDE_MODEL,max_tokens:maxTokens||800,messages:messages};
+if(system)body.system=system;
+var res;
+try{
+res=await fetch('https://api.anthropic.com/v1/messages',{
+method:'POST',
+headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+body:JSON.stringify(body)
+});
+}catch(e){
+throw new Error('ইন্টারনেট বা নেটওয়ার্ক সমস্যা ('+((e&&e.message)||'')+')');
+}
+var data={};
+try{data=await res.json();}catch(e){}
+if(!res.ok){
+var m=(data&&data.error&&data.error.message)||('HTTP '+res.status);
+if(res.status===401)m='API key ঠিক নয় বা বাতিল ('+m+')';
+throw new Error(m);
+}
+return (data.content||[]).map(function(c){return c.text||'';}).join('').trim();
+}
 function todaySummary(){
 var today=new Date().toDateString(),c=0,p=0,cb=0,f=0;
 mealsLog.forEach(function(m){
@@ -1762,24 +1808,14 @@ a.innerHTML='<div class="w-8 h-8 rounded-full bg-emerald-500 text-white flex ite
 var ab=document.createElement('div');ab.className='bg-slate-100 dark:bg-slate-700/60 text-slate-800 dark:text-slate-200 p-3.5 rounded-2xl rounded-tl-none max-w-lg text-sm leading-relaxed';
 ab.style.whiteSpace='pre-wrap';ab.textContent='…';a.appendChild(ab);box.appendChild(a);
 box.scrollTop=box.scrollHeight;
-var key=claudeKey();
-if(!key){window.setClaudeKey();key=claudeKey();}
-if(!key){ab.textContent='Claude API Key দিন: ⚙ চেপে "Claude API Key" বেছে নিন।';return;}
+if(!claudeKey()){
+ab.textContent='Claude API Key দিন, তারপর মেসেজটা আবার পাঠান।';
+window.setClaudeKey();
+return;
+}
 chatHist.push({role:'user',content:msg});
 try{
-var res=await fetch('https://api.anthropic.com/v1/messages',{
-method:'POST',
-headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-body:JSON.stringify({
-model:'claude-sonnet-5-5',
-max_tokens:800,
-system:'You are a friendly Bangladeshi clinical nutritionist and dietitian chatting inside a food tracking app. Reply in Bengali unless the user writes in English. Be concise (under 150 words), practical, and use common Bangladeshi foods in examples. You are not a doctor: for medical conditions suggest seeing one. '+todaySummary(),
-messages:chatHist.slice(-12)
-})
-});
-var data=await res.json();
-if(!res.ok)throw new Error((data&&data.error&&data.error.message)||('HTTP '+res.status));
-var text=(data.content||[]).map(function(c){return c.text||'';}).join('').trim();
+var text=await callClaude(chatHist.slice(-12),'You are a friendly Bangladeshi clinical nutritionist and dietitian chatting inside a food tracking app. Reply in Bengali unless the user writes in English. Be concise (under 150 words), practical, and use common Bangladeshi foods in examples. You are not a doctor: for medical conditions suggest seeing one. '+todaySummary(),800);
 ab.textContent=text||'…';
 chatHist.push({role:'assistant',content:text});
 }catch(e){
@@ -1788,7 +1824,57 @@ ab.textContent='দুঃখিত, উত্তর আনা যায়নি
 }
 box.scrollTop=box.scrollHeight;
 };
+function shrinkImage(dataUrl,max){
+return new Promise(function(ok,fail){
+var img=new Image();
+img.onload=function(){
+var s=Math.min(1,max/Math.max(img.width,img.height));
+var c=document.createElement('canvas');
+c.width=Math.max(1,Math.round(img.width*s));c.height=Math.max(1,Math.round(img.height*s));
+c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+ok(c.toDataURL('image/jpeg',0.85));
+};
+img.onerror=function(){fail(new Error('ছবি পড়া যায়নি'));};
+img.src=dataUrl;
+});
+}
+function restoreEmpty(){var e=document.getElementById('aiEmptyState');if(e&&EMPTY_HTML)e.innerHTML=EMPTY_HTML;}
+function aiError(msg){
+var e=document.getElementById('aiEmptyState');
+e.classList.remove('hidden');
+e.innerHTML='<i class="fa-solid fa-triangle-exclamation text-4xl mb-3 text-rose-400"></i><p class="text-sm text-rose-500 px-4"></p>';
+e.querySelector('p').textContent=msg;
+}
+window.analyzeWithGemini=async function(){
+var g=function(id){return document.getElementById(id);};
+restoreEmpty();
+g('aiEmptyState').classList.add('hidden');g('aiResultCard').classList.add('hidden');
+g('addAiMealBtn').classList.add('hidden');g('aiLoadingState').classList.remove('hidden');
+var isPhoto=!g('photoInputBox').classList.contains('hidden');
+var text=g('aiTextPrompt').value.trim();
+try{
+if(isPhoto&&!selectedImageBase64)throw new Error('আগে খাবারের ছবি দিন');
+if(!isPhoto&&!text)throw new Error('খাবারের বিবরণ লিখুন');
+if(!claudeKey()){window.setClaudeKey();throw new Error('Claude API Key দিন, তারপর আবার Analyze চাপুন');}
+var instr='Analyze this Bangladeshi meal and return ONLY a valid JSON object with keys: "dishName" (string), "calories" (number), "protein" (number), "carbs" (number), "fat" (number), "description" (short string in Bengali and English with brief dietary advice). No markdown, no extra text.';
+var content=[];
+if(isPhoto){
+var small=await shrinkImage(selectedImageBase64,1280);
+content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:small.split(',')[1]}});
+}
+content.push({type:'text',text:instr+(text?(' Meal described by user: '+text):'')});
+var out=await callClaude([{role:'user',content:content}],'',700);
+var json=parseJsonFromAi(out);
+if(!json)throw new Error('AI-র উত্তর বোঝা যায়নি, আবার চেষ্টা করুন');
+activeAiResult=json;displayAiResults(json);
+}catch(e){
+aiError((e&&e.message)||'error');
+}finally{
+g('aiLoadingState').classList.add('hidden');
+}
+};
 function fitChat(){
+if(!document.documentElement.classList.contains('is-app'))return;
 var c=document.querySelector('#tab-dietitian > div'),tab=document.getElementById('tab-dietitian');
 if(!c||!tab)return;
 if(window.innerWidth>=768){c.style.removeProperty('height');return;}
@@ -1801,6 +1887,91 @@ c.style.setProperty('height',h+'px','important');
 var origSwFit=window.switchTab;
 window.switchTab=function(id){origSwFit(id);setTimeout(fitChat,40);};
 window.addEventListener('resize',fitChat);
+function flToast(m){try{alert(m);}catch(e){}}
+function gClientId(){return (window.FOODLENS_GOOGLE_CLIENT_ID||localStorage.getItem('google_client_id')||'').trim();}
+function flUser(){try{return JSON.parse(localStorage.getItem('foodlens_user')||'null');}catch(e){return null;}}
+function decodeJwt(t){
+var p=t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+while(p.length%4)p+='=';
+var j=decodeURIComponent(atob(p).split('').map(function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2);}).join(''));
+return JSON.parse(j);
+}
+function loadGsi(cb){
+if(window.google&&window.google.accounts&&window.google.accounts.id){cb();return;}
+var s=document.createElement('script');
+s.src='https://accounts.google.com/gsi/client';s.async=true;
+s.onload=cb;
+s.onerror=function(){flToast('Google লোড হয়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।');};
+document.head.appendChild(s);
+}
+function applyUserName(){
+var u=flUser();
+document.querySelectorAll('#sidebar div').forEach(function(d){
+if(d.children.length===0){
+if(d.textContent==='Fitness Enthusiast'||d.getAttribute('data-fl-name')){
+d.setAttribute('data-fl-name','1');
+d.textContent=u&&u.name?u.name:'Fitness Enthusiast';
+}
+}
+});
+}
+function onGoogleCred(resp){
+try{
+var p=decodeJwt(resp.credential);
+localStorage.setItem('foodlens_user',JSON.stringify({name:p.name||'',email:p.email||'',picture:p.picture||'',sub:p.sub||''}));
+renderAccount();applyUserName();
+}catch(e){flToast('সাইন-ইন সম্পন্ন হয়নি, আবার চেষ্টা করুন।');}
+}
+function renderAccount(){
+var box=document.getElementById('flAccount');
+if(!box)return;
+box.innerHTML='';
+var u=flUser();
+if(u){
+var row=document.createElement('div');row.className='flex items-center space-x-2';
+var av;
+if(u.picture){av=document.createElement('img');av.src=u.picture;av.referrerPolicy='no-referrer';av.className='w-8 h-8 rounded-full';}
+else{av=document.createElement('div');av.className='w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs';av.textContent=(u.name||'?').charAt(0).toUpperCase();}
+var info=document.createElement('div');info.className='flex-1 min-w-0';
+var n=document.createElement('div');n.className='font-semibold text-slate-800 dark:text-slate-200 truncate';n.textContent=u.name||'Google account';
+var m=document.createElement('div');m.className='text-slate-400 text-[10px] truncate';m.textContent=u.email||'';
+info.appendChild(n);info.appendChild(m);
+var so=document.createElement('button');so.type='button';so.className='text-[11px] font-semibold text-rose-500';so.textContent='Sign out';
+so.addEventListener('click',function(){
+try{window.google.accounts.id.disableAutoSelect();}catch(e){}
+localStorage.removeItem('foodlens_user');
+renderAccount();applyUserName();
+});
+row.appendChild(av);row.appendChild(info);row.appendChild(so);
+box.appendChild(row);
+return;
+}
+var t=document.createElement('div');t.className='text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5';t.textContent='Account';
+box.appendChild(t);
+if(!gClientId()){
+var b=document.createElement('button');b.type='button';
+b.className='w-full flex items-center justify-center space-x-2 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200';
+b.innerHTML='<i class="fa-brands fa-google"></i><span>Sign up with Google</span>';
+b.addEventListener('click',function(){
+var id=prompt('Google Client ID paste করুন (…apps.googleusercontent.com):','');
+if(id===null)return;
+id=id.replace(/\s+/g,'');
+if(id.indexOf('.apps.googleusercontent.com')<1){flToast('Client ID ঠিক নয়। শেষে .apps.googleusercontent.com থাকতে হবে।');return;}
+localStorage.setItem('google_client_id',id);
+renderAccount();
+});
+box.appendChild(b);
+return;
+}
+var holder=document.createElement('div');holder.id='gBtn';box.appendChild(holder);
+loadGsi(function(){
+try{
+window.google.accounts.id.initialize({client_id:gClientId(),callback:onGoogleCred});
+window.google.accounts.id.renderButton(holder,{theme:'outline',size:'large',text:'signup_with',shape:'pill',width:210});
+}catch(e){flToast('Google সাইন-ইন চালু করা যায়নি।');}
+});
+}
+if(!document.documentElement.classList.contains('is-app')){renderAccount();applyUserName();}
 labels();
 })();
 </script>
